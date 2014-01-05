@@ -1,3 +1,9 @@
+erl -make
+erl -pa ebin  deps/*/ebin  -sname jacy
+schema:install().
+server:start(['8002','192.168.0.102']). 
+player:create(<<"jacy">>,<<"jacy">>,<<"JacyHong">>,<<"location_SG">>,10000).
+===================
 I. Installation instructions
 
 1. Install Erlang/OTP. 
