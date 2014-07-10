@@ -1,4 +1,4 @@
--module(exch, [Cbk, Context, Modules]).
+-module(exch, [Cbk, Context, Modules]). % Cbk meaning Callbacks, it refers to a specified module which implemns to this behaviour.
 -behaviour(gen_server).
 
 %%%
@@ -18,19 +18,19 @@
 
 -record(exch, {
           parent,
-          data,
+          data, % #game{}
           note,
           %% fsm 
-          modules, 
-          stack,
-          state,
+          modules, % original modules, not changing it so can reset the stacks 
+          stack, % real time modules info, when modules finished, got removed
+          state, % state of current module
           ctx,
           orig_ctx
          }).
 
 behaviour_info(callbacks) ->
-    [{id, 0}, 
-     {start, 1}, 
+    [{id, 0},     % generate id to link to pid
+     {start, 1},  % call on init
      {stop, 1}, 
      {dispatch, 2},
      {call, 2},
@@ -99,7 +99,7 @@ handle_call(Event, _From, Exch) ->
     {reply, process_call(Event, Exch), Exch}.
 
 %%% {timeout, _, _} at the moment
-
+%% handle_info({timeout, _Ref, none}, Exch) 
 handle_info(Event, Exch) ->
     process_cast(Event, Exch).
 
@@ -114,6 +114,7 @@ process_cast(Event, Exch) ->
   State = Exch#exch.state,
   Data = Exch#exch.data,
   Ctx = Exch#exch.ctx,
+  % io:format("Exch process cast, Event=~w~nState=~w~nData=~w~n------------------------~n", [Event,State,Data]),
 
   case Cbk:cast(Event, Ctx, Data) of
     skip ->
@@ -126,6 +127,7 @@ process_cast(Event, Exch) ->
 init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Ctx = Exch#exch.ctx,
     Exch1 = Exch#exch{ orig_ctx = Ctx, state = none },
+	io:format("Exch Mod=~w, Event=~w~n------------------------~n", [Mod,Event]),
     Result = Mod:start(Exch1#exch.data, Ctx, Params),
     advance(Exch1, Event, Result).
 
@@ -138,6 +140,7 @@ advance(Exch = #exch{}, Event, {skip, Data, _}) ->
 
 advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
     %% game over
+    io:format("Game over, Exch=~w~n------------------------~n", [Exch]),
     if
         is_pid(Exch#exch.parent) ->
             Exch#exch.parent ! {'EXCH EXIT', self(), Ctx};
@@ -149,6 +152,7 @@ advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
 advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
     %% this module is done
     Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = T },
+    io:format("Stop module, Exch=~w~n------------------------~n", [Exch1]),
     init(Exch1, Event);
 
 advance(Exch = #exch{}, Event, {repeat, Data, _}) ->

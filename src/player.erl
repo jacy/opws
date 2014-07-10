@@ -80,6 +80,7 @@ handle_cast(R = #notify_join{}, Data) ->
     {noreply, Data1};
 
 handle_cast(R = #notify_leave{}, Data) ->
+	io:format("Player leaving, Data=~w~n------------------------~n", [Data]),
     Self = self(),
     Game = R#notify_leave.proc,
     Data1 = if 
@@ -100,6 +101,7 @@ handle_cast(R = #notify_leave{}, Data) ->
                     Data
             end,
     %% notify poker client
+	io:format("Player leaving, Data111=~w~n------------------------~n", [Data1]),
     forward_to_client(R, Data1),
     {noreply, Data1};
 

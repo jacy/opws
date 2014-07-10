@@ -1,8 +1,9 @@
 erl -make
 erl -pa ebin  deps/*/ebin  -sname jacy
 schema:install().
-server:start(['8002','192.168.0.102']). 
+server:start(['8002','192.168.1.10']). 
 player:create(<<"jacy">>,<<"jacy">>,<<"JacyHong">>,<<"location_SG">>,10000).
+player:create(<<"lena">>,<<"lena">>,<<"Lena">>,<<"location_SG">>,10000).
 ===================
 I. Installation instructions
 
