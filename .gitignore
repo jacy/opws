@@ -8,3 +8,5 @@ erl_crash.dump
 /.settings/
 /*.project
 /Mnesia.jacy@localhost/
+/Mnesia.ujacy@ujacy/
+/Mnesia.jacy@ujacy/
