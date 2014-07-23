@@ -116,18 +116,21 @@ process_cast(Event, Exch) ->
   Ctx = Exch#exch.ctx,
   % io:format("Exch process cast, Event=~w~nState=~w~nData=~w~n------------------------~n", [Event,State,Data]),
 
-  case Cbk:cast(Event, Ctx, Data) of
+  case Cbk:cast(Event, Ctx, Data) of % try to handle event in common
     skip ->
       Result = Mod:State(Data, Ctx, Event),
       advance(Exch, Event, Result);
-    {NewGame, NewCtx}->
+    {NewGame, NewCtx}-> 
       {noreply, Exch#exch{ data = NewGame, ctx = NewCtx }}
   end.
 
 fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Ctx = Exch#exch.ctx,
     Exch1 = Exch#exch{ orig_ctx = Ctx, state = none },
-	io:format("Exch Mod=~w, Event=~w~n------------------------~n", [Mod,Event]),
+	case Event of
+		{timeout,_,_} -> ok;
+		_ -> io:format("Exch Mod=~w, Event=~w~n------------------------~n", [Mod,Event])
+	end,
     Result = Mod:start(Exch1#exch.data, Ctx, Params),
     advance(Exch1, Event, Result).
 
