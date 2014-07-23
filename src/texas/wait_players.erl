@@ -23,8 +23,8 @@ wait_for_players(Game, Ctx, {timeout, _, _}) ->
     Empty ->
       {repeat, Game, Ctx};
     true ->
-      Game1 = g:notify_cancel_game(Game),
-      {repeat, Game1, Ctx}
+      % Game1 = g:notify_cancel_game(Game),
+      {repeat, Game, Ctx}
   end;
 
 wait_for_players(Game, Ctx, R = #join{}) ->
