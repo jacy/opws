@@ -73,7 +73,7 @@ init(Args = [Parent|_]) ->
       ctx = Context,
       orig_ctx = Context
      },
-    case init(Exch, Start) of
+    case fsm_init(Exch, Start) of
         {stop, _, Exch1} ->
             {stop, Exch1};
         {noreply, Exch1} ->
@@ -124,7 +124,7 @@ process_cast(Event, Exch) ->
       {noreply, Exch#exch{ data = NewGame, ctx = NewCtx }}
   end.
 
-init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
+fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Ctx = Exch#exch.ctx,
     Exch1 = Exch#exch{ orig_ctx = Ctx, state = none },
 	io:format("Exch Mod=~w, Event=~w~n------------------------~n", [Mod,Event]),
@@ -153,12 +153,12 @@ advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
     %% this module is done
     Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = T },
     io:format("Stop module, Exch=~w~n------------------------~n", [Exch1]),
-    init(Exch1, Event);
+    fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, Event, {repeat, Data, _}) ->
     %% repeat this module 
     Exch1 = Exch#exch{ data = Data, ctx = Exch#exch.orig_ctx },
-    init(Exch1, Event);
+    fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, _, {continue, Data, Ctx}) ->
     %% continue processing in this state
@@ -168,13 +168,13 @@ advance(Exch = #exch{}, Event, {goto, top, Data, _}) ->
     %% go to the top of the stack
     %% and start from the beginning
     Exch1 = Exch#exch{ data = Data, stack = Exch#exch.modules },
-    init(Exch1, Event);
+    fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, Event, {goto, Mod, Data, _}) ->
     %% go to a different module
     Stack = trim_stack(Mod, Exch#exch.stack),
     Exch1 = Exch#exch{ data = Data, stack = Stack },
-    init(Exch1, Event);
+    fsm_init(Exch1, Event);
 
 advance(_, Event, Result) ->
     error_logger:error_report([{module, ?MODULE}, 

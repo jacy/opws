@@ -58,7 +58,7 @@ small_blind(Game, Ctx, R) when
   is_record(R, come_back) ->
     {skip, Game, Ctx};
 
-small_blind(Game, Ctx, Event) ->
+small_blind(Game, Ctx, _Event) ->
   {continue, Game, Ctx}.
 
 %%% big blind
@@ -80,7 +80,7 @@ big_blind(Game, Ctx, R = #join{}) ->
 big_blind(Game, Ctx, R = #leave{}) ->
   leave(Game, Ctx, R, big_blind);
 
-big_blind(Game, Ctx, Event) ->
+big_blind(Game, Ctx, _Event) ->
   {continue, Game, Ctx}.
 
 %%
@@ -131,7 +131,7 @@ post_sb(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
 
   Game3 = g:notify_state(Game2, N),
 
-  %% 问玩家下大盲注
+  %% 为玩家下大盲注
   BBPlayers = g:get_seats(Game3, N, ?PS_ACTIVE),
   ask_for_blind(Game3, Ctx1, hd(BBPlayers), Ctx1#texas.bb_amt, big_blind).
 
@@ -147,7 +147,7 @@ post_bb(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
     exp_amt = 0.0
   },
 
-  %% 为玩家下小盲注
+  %% 为玩家下大盲注
   Game1 = g:add_bet(Game, Player, Amt),
   Game2 = g:broadcast(Game1, #notify_blind { 
       game = Game1#game.gid, 

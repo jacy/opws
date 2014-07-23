@@ -22,6 +22,6 @@
 					deal_type,                      %% current private or share
 					deal_count,                      
 					winners = none,                 %% last winners
-          headsup = false
+          			headsup = false
 				 }).
 

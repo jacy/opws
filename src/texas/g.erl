@@ -207,7 +207,7 @@ reset_player_state(Game, _From, _To, 0) ->
 reset_player_state(Game, From, To, Count) ->
   Seat = element(Count, Game#game.seats),
   Game1 = if
-    (Seat#seat.state band From) > 0 ->
+    (Seat#seat.state band From) > 0 ->   % PS_ANY except PS_WAIT_BB
       Game#game {
         seats = setelement(Count,
           Game#game.seats,
@@ -415,6 +415,7 @@ leave(Game, R) ->
     OurPlayer ->
       SeatNum = gb_trees:get(Player, XRef),
       Seat = element(SeatNum, Seats),
+  	  ?LOG([{seat_to_leave, Seat}]),
       PID = Seat#seat.pid,
       if 
         %% leave unless playing
@@ -778,16 +779,16 @@ rank_hands(Game, Seats) ->
                 Seat = element(SeatNum, Game#game.seats),
                 Seat#seat.hand
         end,
-    Hands = lists:map(F, Seats), %% 获取每个有效作为的手牌
+    Hands = lists:map(F, Seats), %% è·åæ¯ä¸ªææä½ä¸ºçæç
     Cards = Game#game.board,
     F1 = fun(Card, Acc) ->
                  F2 = fun(Hand) -> hand:add(Hand, Card) end, 
                  lists:map(F2, Acc)
          end,
-    Hands1 = lists:foldl(F1, Hands, Cards), %% 将公共牌派发到每一个手牌当中
+    Hands1 = lists:foldl(F1, Hands, Cards), %% å°å¬å±çæ´¾åå°æ¯ä¸ä¸ªæçå½ä¸­
     F2 = fun(Hand) -> 
         hand:rank(Hand) 
-    end, %% 对所有的手牌进行排名并返回
+    end, %% å¯¹ææçæçè¿è¡æåå¹¶è¿å
     lists:map(F2, Hands1).
 
 pots(Game) ->
