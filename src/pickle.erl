@@ -263,9 +263,10 @@ tuple(Picklers)
 
 record(Tag, Picklers) 
   when is_tuple(Picklers) ->
-    wrap({fun(Record) -> record_to_list(Tag, Record) end,
-          fun(List) -> list_to_record(Tag, List) end}, 
-         tuple_0(tuple_to_list(Picklers))).
+	Wrapper = { fun(Record) -> record_to_list(Tag, Record) end, 
+				fun(List) -> list_to_record(Tag, List) end
+			  },
+    wrap(Wrapper,  tuple_0(tuple_to_list(Picklers))).
 
 write_tuple_0([], Acc, _) ->
     Acc;
