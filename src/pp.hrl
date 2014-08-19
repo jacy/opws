@@ -260,7 +260,8 @@
 
 -record(game_stage, {
 					game,
-					stage
+					stage,
+					pot
 				 }).
 
 -define(CMD_SEAT_STATE, 30).

@@ -17,14 +17,14 @@ wait_for_players(Game, Ctx, {timeout, _, _}) ->
   Start = (length(Ready) >= ReqCount),
   Empty = g:is_empty(Game),
   if
-    Start ->
-      Game1 = g:notify_start_game(Game),
-      {stop, Game1, Ctx};
-    Empty ->
-      {repeat, Game, Ctx};
-    true ->
-      % Game1 = g:notify_cancel_game(Game),
-      {repeat, Game, Ctx}
+     Start ->
+            Game1 = g:notify_start_game(Game),
+            {stop, Game1, Ctx};
+        Empty ->
+            {repeat, Game, Ctx};
+        true ->
+            Game1 = g:notify_cancel_game(Game),
+            {repeat, Game1, Ctx}
   end;
 
 wait_for_players(Game, Ctx, R = #join{}) ->
@@ -32,6 +32,7 @@ wait_for_players(Game, Ctx, R = #join{}) ->
   {continue, Game1, Ctx};
 
 wait_for_players(Game, Ctx, R = #leave{}) ->
+  io:format("Wait for players got LEAVE EVENT=~w~n", [R]),
   Game1 = g:leave(Game, R#leave { state = ?PS_ANY }),
   {continue, Game1, Ctx};
 

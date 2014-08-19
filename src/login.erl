@@ -80,6 +80,7 @@ login(Info, Player, player_online, Args) ->
 
 login(Info, Player, client_down, [_, _, Socket]) ->
   %% tell player process to talk to the new socket
+  io:format("Tell player to talk to new socket~n"),
   gen_server:cast(Player#tab_player.process, {'SOCKET', Socket}),
   Player1 = Player#tab_player{ socket = Socket },
   {Info, Player1, {ok, Player#tab_player.process}};

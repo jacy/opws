@@ -27,7 +27,7 @@
 					trace
 				 }).
 
--define(PLAYER_TIMEOUT, 10000).
+-define(PLAYER_TIMEOUT, 15000).
 -define(PLAYER_OUT_TIMEOUT, 15000).
 -define(START_DELAY, 2000).
 
@@ -89,7 +89,7 @@
 %%% Player state
 
 -define(PS_EMPTY, 0).
--define(PS_PLAY, 1). % Starting Game, ask for bet
+-define(PS_PLAY, 1). % Joining, starting Game, ask for bet
 -define(PS_FOLD, 2).
 -define(PS_WAIT_BB, 4).
 -define(PS_SIT_OUT, 8).
