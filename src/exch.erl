@@ -119,7 +119,10 @@ process_cast(Event, Exch) ->
   case Cbk:cast(Event, Ctx, Data) of % try to handle event in common
     skip ->
       Result = Mod:State(Data, Ctx, Event),
-	  io:format("Exch Mod=~w,State=~w,Event=~w~n------------------------~n", [Mod,State,Event]),
+	  case Event of
+		{timeout,_,_} -> ok;
+		_ -> io:format("Exch Mod=~w,State=~w,Event=~w~n------------------------~n", [Mod,State,Event])
+		end,
       advance(Exch, Event, Result);
     {NewGame, NewCtx}-> 
       {noreply, Exch#exch{ data = NewGame, ctx = NewCtx }}
