@@ -281,13 +281,13 @@ watch(Game, Ctx, R) ->
     undefined ->
       Detail#notify_game_detail{stage = ?GS_CANCEL};
     _ ->
+		  % Notify Game Shared Card
+		  notify_shared(lists:reverse(Game#game.board), Game, R#watch.player),
       Detail
   end,
 
   gen_server:cast(R#watch.player, Detail1),
 
-  % Notify Game Shared Card
-  notify_shared(lists:reverse(Game#game.board), Game, R#watch.player),
 
   notify_player_state(R#watch.player, Game),
   watch(R, Game).
@@ -625,6 +625,7 @@ cancel_timer(Ref) ->
     end.
 
 restart_timer(Game, Timeout) ->
+	%io:format("Set timer Timeout=~w~n------------------------~n", [Timeout]),
     Game#game{ timer = erlang:start_timer(Timeout, self(), none) }.
 
 add_bet(Game, Player, Amount)
