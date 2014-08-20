@@ -16,7 +16,7 @@
          pot_size/1, draw/3, draw_shared/2, 
          inplay_plus/3, show_cards/2, rank_hands/1, 
          pots/1, make/1, make/3, watch/3, unwatch/2,
-         notify_state/2
+         notify_state/2,broadcast_player_state/1
         ]).
 
 -include("texas.hrl").
@@ -417,9 +417,6 @@ leave(Game, R) ->
       Seat = element(SeatNum, Seats),
   	  ?LOG([{seat_to_leave, Seat}]),
       PID = Seat#seat.pid,
-      if 
-        %% leave unless playing
-        Seat#seat.state band R#leave.state > 0 ->
           ?LOG([{can_leave}]),
           %% tell player
           R1 = #notify_leave{ 
@@ -450,16 +447,6 @@ leave(Game, R) ->
           Game3 = watch(#watch{player = Player}, Game2),
           ?LOG([{leave_auto_watch_end}]),
           Game3;
-        %% cannot leave now, use auto-play
-        true ->
-          ?LOG([{auto_play}]),
-          Fold = #fold{ game = self(), player = Player },
-          Leave = #leave{ game = self(), player = Player },
-          Seat1 = Seat#seat{ cmd_que = [[Fold, Leave]] },
-          Game#game {
-            seats = setelement(SeatNum, Seats, Seat1)
-          }
-      end;
     %% not playing here
     true ->
       ?LOG([{not_ourplayer, leave, R}]),

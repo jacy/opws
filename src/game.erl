@@ -93,9 +93,6 @@ cast({timeout, _, {out, SeatNum, PID}}, Ctx, Game) ->
   end,
   {Game, Ctx};
 
-cast(R = #leave{}, Ctx, Game) ->
-  Game1 = g:leave(Game, R),
-  {Game1, Ctx};
 
 cast(R = #watch{}, Ctx, Game) ->
   Game1 = g:watch(Game, Ctx, R),

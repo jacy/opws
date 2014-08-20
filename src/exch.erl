@@ -121,7 +121,7 @@ process_cast(Event, Exch) ->
       Result = Mod:State(Data, Ctx, Event),
 	  case Event of
 		{timeout,_,_} -> ok;
-		_ -> io:format("Exch Mod=~w,State=~w,Event=~w~n------------------------~n", [Mod,State,Event])
+		_ -> ?LOG([{"Executed Mod=",Mod,",State=",State,",Event=",Event,",Result=",Result}])
 		end,
       advance(Exch, Event, Result);
     {NewGame, NewCtx}-> 
@@ -131,11 +131,11 @@ process_cast(Event, Exch) ->
 fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Ctx = Exch#exch.ctx,
     Exch1 = Exch#exch{ orig_ctx = Ctx, state = none },
+    Result = Mod:start(Exch1#exch.data, Ctx, Params),
 	case Event of
 		{timeout,_,_} -> ok;
-		_ -> io:format("Exch Mod=~w, Event=~w~n------------------------~n", [Mod,Event])
+		_ -> ?LOG([{"Fsm init Mod=", Mod,",Result=",Result}])
 	end,
-    Result = Mod:start(Exch1#exch.data, Ctx, Params),
     advance(Exch1, Event, Result).
 
 advance(Exch = #exch{}, _, {next, State, Data, Ctx}) ->
@@ -147,7 +147,7 @@ advance(Exch = #exch{}, Event, {skip, Data, _}) ->
 
 advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
     %% game over
-    io:format("Game over, Exch=~w~n------------------------~n", [Exch]),
+	?LOG([{"Game over, Exch=", Exch}]),
     if
         is_pid(Exch#exch.parent) ->
             Exch#exch.parent ! {'EXCH EXIT', self(), Ctx};
@@ -159,7 +159,7 @@ advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
 advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
     %% this module is done
     Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = T },
-    io:format("Stop module, Exch=~w~n------------------------~n", [Exch1]),
+	?LOG([{"Stop module, Exch=", Exch1}]),
     fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, Event, {repeat, Data, _}) ->

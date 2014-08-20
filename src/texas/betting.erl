@@ -159,17 +159,30 @@ betting(Game, Ctx, R = #join{}) ->
 
 %% Leave
 betting(Game, Ctx, R = #leave{}) ->
-  Game1 = g:leave(Game, R#leave{ state = ?PS_CAN_LEAVE }),
-  {continue, Game1, Ctx};
+	if Ctx#texas.exp_player /= R#leave.player ->
+  		Game1 = g:leave(Game, R),
+		StandingCount = standing_count(Game1, Ctx#texas.exp_seat),
+	    if StandingCount < 2 
+			 ->
+		      %% last man standing wins
+			  Game2 = g:cancel_timer(Game1),
+		      {goto, showdown, Game2, Ctx};
+		  true -> 
+			  {continue, Game1, Ctx}
+		 end;
+	  true ->
+		    Game1 = g:cancel_timer(Game),
+     		Game2 = g:leave(Game1, R),
+			next_turn(Game2, Ctx, Ctx#texas.exp_seat)
+	end;
 
 betting(Game, Ctx, _Event) ->
   {continue, Game, Ctx}.
 
 next_turn(Game, Ctx, N) ->
   Active = g:get_seats(Game, N, ?PS_PLAY),
-  Standing = g:get_seats(Game, N, ?PS_STANDING),
   ActiveCount = length(Active),
-  StandingCount = length(Standing),
+  StandingCount = standing_count(Game, N),
 
   if 
     StandingCount < 2 ->
@@ -210,3 +223,7 @@ ask_for_bet(Game, Ctx, N) ->
       exp_max = Max
     }
   }.
+
+standing_count(Game,Sn) ->
+	Standing = g:get_seats(Game, Sn, ?PS_STANDING),
+	length(Standing).
