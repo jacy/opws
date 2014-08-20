@@ -80,7 +80,6 @@ handle_cast(R = #notify_join{}, Data) ->
     {noreply, Data1};
 
 handle_cast(R = #notify_leave{}, Data) ->
-	io:format("Player leaving, Data=~w~n------------------------~n", [Data]),
     Self = self(),
     Game = R#notify_leave.proc,
     Data1 = if 
@@ -101,7 +100,6 @@ handle_cast(R = #notify_leave{}, Data) ->
                     Data
             end,
     %% notify poker client
-	io:format("Player leaving, Data111=~w~n------------------------~n", [Data1]),
     forward_to_client(R, Data1),
     {noreply, Data1};
 
@@ -115,6 +113,11 @@ handle_cast(R = #unwatch{}, Data) ->
     Game = R#unwatch.game,
     case gb_trees:is_defined(Game, Data#pdata.watching) of
         true ->
+			case gb_trees:is_empty(Data#pdata.playing) of
+				true -> 
+				     do_nothing;
+			    _ -> gen_server:cast(Game, #leave{ player = self(), state = ?PS_CAN_LEAVE })
+			end,
             gen_server:cast(Game, R#unwatch{ player = self() }),
             Watching = gb_trees:delete(Game, Data#pdata.watching),
             {noreply, Data#pdata{ watching = Watching }};
