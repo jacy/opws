@@ -15,16 +15,12 @@ wait_for_players(Game, Ctx, {timeout, _, _}) ->
   Ready = g:get_seats(Game, ?PS_READY),
   ReqCount = Game#game.required_player_count,
   Start = (length(Ready) >= ReqCount),
-  Empty = g:is_empty(Game),
   if
      Start ->
             Game1 = g:notify_start_game(Game),
             {stop, Game1, Ctx};
-        Empty ->
-            {repeat, Game, Ctx};
         true ->
-            Game1 = g:notify_cancel_game(Game),
-            {repeat, Game1, Ctx}
+            {repeat, Game, Ctx}
   end;
 
 wait_for_players(Game, Ctx, R = #join{}) ->
