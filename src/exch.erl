@@ -114,14 +114,13 @@ process_cast(Event, Exch) ->
   State = Exch#exch.state,
   Data = Exch#exch.data,
   Ctx = Exch#exch.ctx,
-  % io:format("Exch process cast, Event=~w~nState=~w~nData=~w~n------------------------~n", [Event,State,Data]),
 
   case Cbk:cast(Event, Ctx, Data) of % try to handle event in common
     skip ->
       Result = Mod:State(Data, Ctx, Event),
 	  case Event of
 		{timeout,_,_} -> ok;
-		_ -> ?LOG([{"Executed Mod=",Mod,",State=",State,",Event=",Event,",Result=",Result}])
+		_ -> io:format("Executed Mod=~w, State=~w, Event=~w, Result=~w ~n",[Mod,State,Event,Result])
 		end,
       advance(Exch, Event, Result);
     {NewGame, NewCtx}-> 
@@ -134,7 +133,7 @@ fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Result = Mod:start(Exch1#exch.data, Ctx, Params),
 	case Event of
 		{timeout,_,_} -> ok;
-		_ -> ?LOG([{"Fsm init Mod=", Mod,",Result=",Result}])
+		_ -> io:format("Fsm init Mod=, Result=~w ~n",[Mod,Result])
 	end,
     advance(Exch1, Event, Result).
 
@@ -147,7 +146,6 @@ advance(Exch = #exch{}, Event, {skip, Data, _}) ->
 
 advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
     %% game over
-	?LOG([{"Game over, Exch=", Exch}]),
     if
         is_pid(Exch#exch.parent) ->
             Exch#exch.parent ! {'EXCH EXIT', self(), Ctx};
@@ -159,7 +157,7 @@ advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
 advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
     %% this module is done
     Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = T },
-	?LOG([{"Stop module, Exch=", Exch1}]),
+	io:format("Stop Current Mod, Exch=~w ~n",Exch),
     fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, Event, {repeat, Data, _}) ->
