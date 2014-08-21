@@ -133,7 +133,7 @@ fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Result = Mod:start(Exch1#exch.data, Ctx, Params),
 	case Event of
 		{timeout,_,_} -> ok;
-		_ -> io:format("Fsm init Mod=, Result=~w ~n",[Mod,Result])
+		_ -> io:format("Fsm init Mod=~w, Result=~w ~n",[Mod,Result])
 	end,
     advance(Exch1, Event, Result).
 
