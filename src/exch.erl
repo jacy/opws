@@ -157,7 +157,7 @@ advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
 advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
     %% this module is done
     Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = T },
-	io:format("Stop Current Mod, Exch=~w ~n",Exch),
+	io:format("Stop Current Mod, Exch=~w ~n",[Exch]),
     fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, Event, {repeat, Data, _}) ->
