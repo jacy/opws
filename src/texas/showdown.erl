@@ -20,10 +20,7 @@ start(Game, Ctx, []) ->
   {_, Big} = (Game1#game.limit):blinds(Game1#game.low, Game1#game.high),
   Game2 = check_inplay(g:get_seats(Game, ?PS_ANY), Big, Game1),
 
-  %% 游戏结束
-  g:broadcast(Game2, #notify_end_game{ game = Game2#game.gid }),
   Ctx1 = Ctx#texas{ winners = Winners,stage=?GS_SHOWDOWN },
-
   {stop, Game2, Ctx1}.
 
 %%%
@@ -111,7 +108,6 @@ check_inplay([], _Big, Game) ->
 check_inplay([SeatNum|T], Big, Game) -> 
   Seat = element(SeatNum, Game#game.seats),
   Inplay = Seat#seat.inplay,
-  PID = Seat#seat.pid,
   Game1 = if
     Inplay =< Big ->
       ?LOG([{player_out, SeatNum, Big, Inplay}]),
