@@ -276,11 +276,13 @@ watch(Game, Ctx, R) ->
     high = Game#game.high
   },
 
-
   gen_server:cast(R#watch.player, Detail),
-
-
   notify_player_state(R#watch.player, Game),
+  if Ctx#texas.stage band ?GS_BETTING > 0 ->
+		 gen_server:cast(R#watch.player,#notify_actor{ game = Game#game.gid, seat = Ctx#texas.exp_seat}); % Show timer
+	 true -> 
+		  ok
+  end,
   watch(R, Game).
 
 watch(R, Game) ->

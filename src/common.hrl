@@ -54,6 +54,8 @@
 -define(GS_RIVER, 16).
 -define(GS_SHOWDOWN, 32).
 
+-define(GS_BETTING, (?GS_PREFLOP bor ?GS_FLOP bor ?GS_TURN bor ?GS_RIVER)).
+
 %%% Game type
 
 -define(GT_TEXAS_HOLDEM, 0).
@@ -101,45 +103,45 @@
 -define(PS_OUT, 1024). % can't play anymore
 
 -define(PS_ANY, 
-				?PS_PLAY bor
+				(?PS_PLAY bor
 				?PS_FOLD bor
 				?PS_WAIT_BB bor
 				?PS_SIT_OUT bor
 				?PS_MAKEUP_BB bor
 				?PS_ALL_IN bor
 				?PS_BET bor 
-				?PS_AUTOPLAY).
+				?PS_AUTOPLAY)).
 
 -define(PS_ACTIVE, 
-				?PS_PLAY bor 
-				?PS_MAKEUP_BB).
+				(?PS_PLAY bor 
+				?PS_MAKEUP_BB)).
 
 -define(PS_BB_ACTIVE, 
-				?PS_PLAY bor
+				(?PS_PLAY bor
 				?PS_WAIT_BB bor
-				?PS_MAKEUP_BB).
+				?PS_MAKEUP_BB)).
 
 -define(PS_READY,
-				?PS_STANDING bor
+				(?PS_STANDING bor
 				?PS_BB_ACTIVE bor
-				?PS_FOLD).
+				?PS_FOLD)).
 
 -define(PS_SHOWDOWN, 
-				?PS_PLAY bor
+				(?PS_PLAY bor
 				?PS_BET bor
-				?PS_ALL_IN).
+				?PS_ALL_IN)).
 
 -define(PS_STANDING, 
-				?PS_PLAY bor
+				(?PS_PLAY bor
 				?PS_ALL_IN bor
-				?PS_BET).
+				?PS_BET)).
 
 -define(PS_CAN_LEAVE,
-				?PS_FOLD bor
+				(?PS_FOLD bor
 				?PS_OUT bor
 				?PS_WAIT_BB bor
 				?PS_SIT_OUT bor
-				?PS_MAKEUP_BB).
+				?PS_MAKEUP_BB)).
 
 %%% Face
 
