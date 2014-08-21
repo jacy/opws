@@ -904,7 +904,8 @@ core_texas_mods() ->
      %% river
      {betting, [?MAX_RAISES, ?GS_RIVER]}, 
      %% showdown
-     {showdown, []}
+     {showdown, []},
+     {delay, []} % delay according to winner counts
     ].
      
 texas_holdem_mods(StartDelay) ->
