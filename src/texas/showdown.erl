@@ -22,7 +22,7 @@ start(Game, Ctx, []) ->
 
   %% 游戏结束
   g:broadcast(Game2, #notify_end_game{ game = Game2#game.gid }),
-  Ctx1 = Ctx#texas{ winners = Winners },
+  Ctx1 = Ctx#texas{ winners = Winners,stage=?GS_SHOWDOWN },
 
   {stop, Game2, Ctx1}.
 
@@ -115,8 +115,7 @@ check_inplay([SeatNum|T], Big, Game) ->
   Game1 = if
     Inplay =< Big ->
       ?LOG([{player_out, SeatNum, Big, Inplay}]),
-      erlang:start_timer(?PLAYER_OUT_TIMEOUT, self(), {out, SeatNum, PID}),
-      g:set_state(Game, SeatNum, ?PS_OUT);
+      g:leave(Game, #leave{player=Seat#seat.player,game=Game});
     true ->
       Game
   end,

@@ -257,14 +257,13 @@ unwatch(Game, R) ->
 watch(Game, Ctx, R) ->
   Players = get_seats(Game, ?PS_ANY),
 
-  %Limit = #limit {
-    %type = Game#game.limit, 
-    %min = Game#game.min, 
-    %max = Game#game.max, 
-    %high = Game#game.high, 
-    %low = Game#game.low
-  %},
-
+  case Ctx#texas.stage of
+    	?GS_CANCEL -> ok ;
+    _ ->
+		  % Notify Game Shared Card
+		  notify_shared(lists:reverse(Game#game.board), Game, R#watch.player)
+  end,
+  
   Detail = #notify_game_detail{
     game = Game#game.gid, 
     pot = pot:total(Game#game.pot),
@@ -277,16 +276,8 @@ watch(Game, Ctx, R) ->
     high = Game#game.high
   },
 
-  Detail1 = case Detail#notify_game_detail.stage of
-    undefined ->
-      Detail#notify_game_detail{stage = ?GS_CANCEL};
-    _ ->
-		  % Notify Game Shared Card
-		  notify_shared(lists:reverse(Game#game.board), Game, R#watch.player),
-      Detail
-  end,
 
-  gen_server:cast(R#watch.player, Detail1),
+  gen_server:cast(R#watch.player, Detail),
 
 
   notify_player_state(R#watch.player, Game),

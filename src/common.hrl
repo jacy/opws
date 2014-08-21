@@ -46,14 +46,13 @@
 
 %%% Game stage
 
--define(GS_CANCEL, 254).
--define(GS_PREFLOP, 0).
--define(GS_FLOP, 1).
--define(GS_TURN, 2).
--define(GS_RIVER, 3).
--define(GS_DELAYED_START, 4).
--define(GS_BLINDS, 5).
--define(GS_SHOWDOWN, 6).
+-define(GS_CANCEL, 0).
+-define(GS_GAME_START, 1). %Game start
+-define(GS_PREFLOP, 2).
+-define(GS_FLOP, 4).
+-define(GS_TURN, 8).
+-define(GS_RIVER, 16).
+-define(GS_SHOWDOWN, 32).
 
 %%% Game type
 

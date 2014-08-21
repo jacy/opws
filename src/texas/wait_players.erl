@@ -8,7 +8,7 @@
 start(Game, Ctx, [Delay]) ->
   Game1 = g:restart_timer(Game, Delay),
   %% reset call amount
-  Ctx1 = Ctx#texas{ call = 0 },
+  Ctx1 = Ctx#texas{ call = 0, stage=?GS_CANCEL },
   {next, wait_for_players, Game1, Ctx1}.
 
 wait_for_players(Game, Ctx, {timeout, _, _}) ->
@@ -18,7 +18,7 @@ wait_for_players(Game, Ctx, {timeout, _, _}) ->
   if
      Start ->
             Game1 = g:notify_start_game(Game),
-            {stop, Game1, Ctx};
+            {stop, Game1, Ctx#texas{stage=?GS_GAME_START}};
         true ->
             {repeat, Game, Ctx}
   end;
