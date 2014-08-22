@@ -170,14 +170,14 @@ join(Game, Ctx, R, State) ->
 leave(Game, Ctx, R, State) ->
   Player = R#leave.player,
   {Seat, _} = g:get_seat(Game, Player),
-  PS = if
-    (State == big_blind) and (Seat == Ctx#texas.sb) ->
-      %% fold and leave next time 
-      %% a bet is requested from us
-      ?PS_CAN_LEAVE;
-    true ->
-      %% leave now
-      ?PS_ANY
-  end,
-  Game1 = g:leave(Game, R#leave{ state = PS }),
+%%   PS = if
+%%     (State == big_blind) and (Seat == Ctx#texas.sb) ->
+%%       %% fold and leave next time 
+%%       %% a bet is requested from us
+%%       ?PS_CAN_LEAVE;
+%%     true ->
+%%       %% leave now
+%%       ?PS_ANY
+%%   end,
+  Game1 = g:leave(Game, R),
   {continue, Game1, Ctx}.

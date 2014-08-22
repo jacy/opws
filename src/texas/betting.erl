@@ -199,14 +199,18 @@ next_turn(Game, Ctx, N) ->
       ask_for_bet(Game, Ctx, hd(Active))
   end.
 
-ask_for_bet(Game, Ctx, N) ->
-  Seat = g:get_seat(Game, N),
-  Player = Seat#seat.player,
-  Inplay = Seat#seat.inplay,
-  Bet = Seat#seat.bet,
-  Stage = Ctx#texas.stage,
-  PotSize = g:pot_size(Game),
-  Call = Ctx#texas.call - Bet,
+ask_for_bet(Game, Ctx=#texas{call=OldCall, have_blinds=HaveBlinds, bb=BB,sb_amt=SBAmt,bb_amt=BBAmt}, N) ->
+    Seat = g:get_seat(Game, N),
+    Player = Seat#seat.player,
+    Inplay = Seat#seat.inplay,
+    Bet = Seat#seat.bet,
+    Stage = Ctx#texas.stage,
+    PotSize = g:pot_size(Game),
+    Call = if (HaveBlinds and (Player == BB)) ->
+				  OldCall - Bet - (BBAmt - SBAmt);
+			 true ->
+				OldCall - Bet
+    end,
   Low = Game#game.low,
   High = Game#game.high,
 

@@ -116,7 +116,7 @@ handle_cast(R = #unwatch{}, Data) ->
 			case gb_trees:is_empty(Data#pdata.playing) of
 				true -> 
 				     do_nothing;
-			    _ -> gen_server:cast(Game, #leave{ player = self(), state = ?PS_CAN_LEAVE })
+			    _ -> gen_server:cast(Game, #leave{ player = self()})
 			end,
             gen_server:cast(Game, R#unwatch{ player = self() }),
             Watching = gb_trees:delete(Game, Data#pdata.watching),
@@ -165,7 +165,7 @@ handle_cast(R, Data)
     Game = element(2, R),
     R1 = if
              is_record(R, leave) ->
-                 R#leave{ player = self(), state = ?PS_CAN_LEAVE };
+                 R#leave{ player = self()};
              true ->
                  setelement(3, R, self())
          end,

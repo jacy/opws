@@ -73,8 +73,7 @@
 
 -record(leave, {
 					game,
-					player,
-					state
+					player
 				 }).
 
 -define(CMD_SIT_OUT, 10).

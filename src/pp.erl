@@ -342,7 +342,6 @@ join() ->
 leave() ->
     record(leave, {
              game(),
-             internal(),
              internal()
             }).
 
