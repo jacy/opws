@@ -20,7 +20,12 @@ start(Game, Ctx, []) ->
   {_, Big} = (Game1#game.limit):blinds(Game1#game.low, Game1#game.high),
   Game2 = check_inplay(g:get_seats(Game, ?PS_ANY), Big, Game1),
 
-  Ctx1 = Ctx#texas{ winners = Winners,stage=?GS_SHOWDOWN },
+  WinDelay = length(Winners) * 2000,
+  Delay = case Ctx#texas.stage of
+	  ?GS_RIVER -> 2000 + WinDelay;
+	  _ -> WinDelay
+  end,
+  Ctx1 = Ctx#texas{ winners = Winners,stage=?GS_SHOWDOWN,win_duration=Delay },
   {stop, Game2, Ctx1}.
 
 %%%

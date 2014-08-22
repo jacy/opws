@@ -115,17 +115,12 @@ process_cast(Event, Exch) ->
   Data = Exch#exch.data,
   Ctx = Exch#exch.ctx,
 
-  case Cbk:cast(Event, Ctx, Data) of % try to handle event in common
-    skip ->
-      Result = Mod:State(Data, Ctx, Event),
-	  case Event of
-		{timeout,_,_} -> ok;
-		_ -> io:format("Executed Mod=~w, State=~w, Event=~w, Result=~w ~n",[Mod,State,Event,Result])
-		end,
-      advance(Exch, Event, Result);
-    {NewGame, NewCtx}-> 
-      {noreply, Exch#exch{ data = NewGame, ctx = NewCtx }}
-  end.
+  Result = Mod:State(Data, Ctx, Event),
+  case Event of
+	{timeout,_,_} -> ok;
+	_ -> io:format("Executed Mod=~w, State=~w, Event=~w, Result=~w ~n",[Mod,State,Event,Result])
+	end,
+   advance(Exch, Event, Result).
 
 fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Ctx = Exch#exch.ctx,
@@ -141,8 +136,11 @@ advance(Exch = #exch{}, _, {next, State, Data, Ctx}) ->
     %% advance to the next state
     {noreply, Exch#exch{ state = State, data = Data, ctx = Ctx }};
 
-advance(Exch = #exch{}, Event, {skip, Data, _}) ->
-    {noreply, Exch#exch{ data = Cbk:dispatch(Event, Data) }};
+advance(Exch = #exch{}, Event, {skip, Data, Ctx}) ->
+  case Cbk:cast(Event, Ctx, Data) of % try to handle event in common
+    {NewGame, NewCtx} -> {noreply, Exch#exch{ data = NewGame, ctx = NewCtx }};
+    _ -> {noreply, Exch}
+  end;
 
 advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
     %% game over

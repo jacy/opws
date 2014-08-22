@@ -176,8 +176,8 @@ betting(Game, Ctx, R = #leave{}) ->
 			next_turn(Game2, Ctx, Ctx#texas.exp_seat)
 	end;
 
-betting(Game, Ctx, _Event) ->
-  {continue, Game, Ctx}.
+betting(Game, Ctx, _) ->
+  {skip, Game, Ctx}.
 
 next_turn(Game, Ctx, N) ->
   Active = g:get_seats(Game, N, ?PS_PLAY),

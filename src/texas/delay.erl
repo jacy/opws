@@ -5,9 +5,7 @@
 -include("texas.hrl").
 
 start(Game, Ctx, []) ->
-	Delay = 2000 + length(Ctx#texas.winners) * 2000,
-	io:format("Dealy time=~w~n", [Delay]),
-    Game1 = g:restart_timer(Game, Delay),
+    Game1 = g:restart_timer(Game, Ctx#texas.win_duration),
     {next, delay, Game1, Ctx}.
 
 delay(Game, Ctx, {timeout, _, _}) ->
@@ -15,4 +13,7 @@ delay(Game, Ctx, {timeout, _, _}) ->
 
 delay(Game, Ctx, R = #leave{}) ->
 	Game1 = g:leave(Game, R),
-	{stop, Game1, Ctx}.
+	{stop, Game1, Ctx};
+
+delay(Game, Ctx, _) ->
+  {skip, Game, Ctx}.
