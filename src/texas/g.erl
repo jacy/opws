@@ -760,16 +760,16 @@ rank_hands(Game, Seats) ->
                 Seat = element(SeatNum, Game#game.seats),
                 Seat#seat.hand
         end,
-    Hands = lists:map(F, Seats), %% è·åæ¯ä¸ªææä½ä¸ºçæç
+    Hands = lists:map(F, Seats), %% 获取每个有效作为的手牌
     Cards = Game#game.board,
     F1 = fun(Card, Acc) ->
                  F2 = fun(Hand) -> hand:add(Hand, Card) end, 
                  lists:map(F2, Acc)
          end,
-    Hands1 = lists:foldl(F1, Hands, Cards), %% å°å¬å±çæ´¾åå°æ¯ä¸ä¸ªæçå½ä¸­
+    Hands1 = lists:foldl(F1, Hands, Cards), %% 将公共牌派发到每一个手牌当中
     F2 = fun(Hand) -> 
         hand:rank(Hand) 
-    end, %% å¯¹ææçæçè¿è¡æåå¹¶è¿å
+    end, %% 对所有的手牌进行排名并返回
     lists:map(F2, Hands1).
 
 pots(Game) ->
