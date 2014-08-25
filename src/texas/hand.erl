@@ -61,7 +61,7 @@ is_straight_flush(Hand, Rep) ->
       none ->
         none;
       Hand1 ->
-        High = Hand1#hand.high1,
+        High = Hand1#hand.high2,
         case is_straight(Hand, [High, High, High, High]) of
           none ->
             none;
@@ -79,8 +79,8 @@ is_flush(Hand, [H|T], Suit) ->
     Count < 5 ->
       is_flush(Hand, T, Suit + 1);
     true ->
-      High1 = bits:clear_extra_bits(H, 5),
-      Hand#hand{ rank = ?HC_FLUSH, high1 = High1, suit = Suit }
+      High5Cards = bits:clear_extra_bits(H, 5),
+      Hand#hand{ rank = ?HC_FLUSH, high1 = High5Cards,high2=H, suit = Suit }
   end;
 
 is_flush(_, [], _) ->
@@ -90,27 +90,25 @@ is_straight(Hand, Rep) ->
     Mask = make_mask(Rep),
     is_straight(Hand, Mask, Rep).
 
-is_straight(Hand, Mask, Rep) 
-  when is_list(Rep) ->
-    if             %AKQJT98765432A
-  Mask band 2#10000000000000 > 0 ->
-      Value = Mask bor 1;
-  true ->
-      Value = Mask
-    end,                %AKQJT98765432A
-    is_straight(Hand, Value, 2#11111000000000);
+is_straight(Hand, Mask, Rep) when is_list(Rep) ->
+    if 
+		Mask band 2#10000000000000 > 0 ->  %% contains card A
+      		Mask1 = Mask bor 1;
+  		true ->
+     	 	Mask1 = Mask
+    end,                       %AKQJT98765432A
+    is_straight(Hand, Mask1, 2#11111000000000);
 
-is_straight(_, _, Mask) 
-  when Mask < 2#11111 ->
+is_straight(_, _, Mask) when Mask < 2#11111 ->
     none;
 
 is_straight(Hand, Value, Mask) 
   when Mask >= 2#11111 ->
     if 
-  Value band Mask =:= Mask ->
+  		Value band Mask =:= Mask ->
             Hand#hand{ rank = ?HC_STRAIGHT, high1 = Mask };
-  true ->
-      is_straight(Hand, Value, Mask bsr 1)
+  		true ->
+      		is_straight(Hand, Value, Mask bsr 1)
     end.
   
 is_four_kind(Hand, [C, D, H, S]) ->
@@ -574,18 +572,28 @@ rank_flush1_test() ->
     H = rank_test_hand("4D JD 5D JC QD 2D 7H"),
     ?assertEqual(?HC_FLUSH, H#hand.rank),
     ?assertEqual(2#00110000011010, H#hand.high1),
+    ?assertEqual(2#00110000011010, H#hand.high2),
     ?assertEqual(0, H#hand.score).
 
 rank_flush2_test() ->
     H = rank_test_hand("8C AD 5D AS KD 9D 4D"),
     ?assertEqual(?HC_FLUSH, H#hand.rank),
     ?assertEqual(2#11000100011000, H#hand.high1),
+    ?assertEqual(2#11000100011000, H#hand.high2),
     ?assertEqual(0, H#hand.score).
 
 rank_flush3_test() ->
     H = rank_test_hand("4C JC 5C 8D QC 3C 7S"),
     ?assertEqual(?HC_FLUSH, H#hand.rank),
     ?assertEqual(2#00110000011100, H#hand.high1),
+    ?assertEqual(2#00110000011100, H#hand.high2),
+    ?assertEqual(0, H#hand.score).
+
+rank_flush4_test() ->
+    H = rank_test_hand("4C JC 5C QC 3C KC TD"),
+    ?assertEqual(?HC_FLUSH, H#hand.rank),
+    ?assertEqual(2#01110000011000, H#hand.high1),
+    ?assertEqual(2#01110000011100, H#hand.high2),
     ?assertEqual(0, H#hand.score).
 
 rank_full_house1_test() ->
@@ -650,6 +658,12 @@ rank_straight_flush3_test() ->
     H = rank_test_hand("KS QS JS TS 9S AD 7S"),
     ?assertEqual(?HC_STRAIGHT_FLUSH, H#hand.rank),
     ?assertEqual(2#01111100000000, H#hand.high1),
+    ?assertEqual(0, H#hand.score).
+
+rank_straight_flush4_test() ->
+    H = rank_test_hand("AS QS JS TS 9S 8S AD"),
+    ?assertEqual(?HC_STRAIGHT_FLUSH, H#hand.rank),
+    ?assertEqual(2#00111110000000, H#hand.high1),
     ?assertEqual(0, H#hand.score).
 
 high_card_win_test() ->
