@@ -57,8 +57,7 @@ rank(Hand, [], Rep) ->
   Hand#hand{ rank = ?HC_HIGH_CARD, high1 = High, score = 0 }.
 
 is_straight_flush(Hand, Rep) ->
-    Mask = make_mask(Rep),
-    case is_flush(Hand, Mask, Rep, ?CS_CLUBS) of
+    case is_flush(Hand, Rep, ?CS_CLUBS) of
       none ->
         none;
       Hand1 ->
@@ -72,21 +71,19 @@ is_straight_flush(Hand, Rep) ->
     end.
 
 is_flush(Hand, Rep) ->
-    Mask = make_mask(Rep),
-    is_flush(Hand, Mask, Rep, ?CS_CLUBS).
+    is_flush(Hand, Rep, ?CS_CLUBS).
 
-is_flush(Hand, Mask, [H|T], Suit) ->
-  Score = Mask band H,
-  Count = bits:bits1(Score),
+is_flush(Hand, [H|T], Suit) ->
+  Count = bits:bits1(H),
   if 
     Count < 5 ->
-      is_flush(Hand, Mask, T, Suit + 1);
+      is_flush(Hand, T, Suit + 1);
     true ->
-      High1 = bits:clear_extra_bits(Score, 5),
+      High1 = bits:clear_extra_bits(H, 5),
       Hand#hand{ rank = ?HC_FLUSH, high1 = High1, suit = Suit }
   end;
 
-is_flush(_, _, [], _) ->
+is_flush(_, [], _) ->
     none.
 
 is_straight(Hand, Rep) ->
