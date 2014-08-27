@@ -187,7 +187,7 @@
 					rank = none,
 					high1 = none,
 					high2 = none,
-          suit = ?CS_NONE,
+          			suit = ?CS_NONE,
 					score = 0
 				 }).
 

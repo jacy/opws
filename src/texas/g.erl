@@ -760,7 +760,7 @@ rank_hands(Game, Seats) ->
                 Seat = element(SeatNum, Game#game.seats),
                 Seat#seat.hand
         end,
-    Hands = lists:map(F, Seats), %% 获取每个有效作为的手牌
+    Hands = lists:map(F, Seats), %% 获取每个有效座位的手牌
     Cards = Game#game.board,
     F1 = fun(Card, Acc) ->
                  F2 = fun(Hand) -> hand:add(Hand, Card) end, 
