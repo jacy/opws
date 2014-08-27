@@ -1,13 +1,9 @@
 -module(hand).
 
-%%%
-%%% Poker hand
-%%%
-
 -export([new/2, new/3, add/2, rank/1]).
 
 -export([make_card/1, make_card/2, make_cards/1, print_bin/1, 
-         print_rep/1, to_string/1, player_hand/1, card_to_string/1]).
+         print_rep/1, to_string/1, player_hand/1, card_to_string/1, face_from_mask/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -27,10 +23,6 @@ add(Hand, Card) ->
     Hand#hand{ cards = [Card|Hand#hand.cards] }.
 
 rank(Hand) ->
-  %% 按照花色生成对牌型的位组合
-  %% 0b0001 向左位移相应Face的位数，通过对位移后的结果进行与运算
-  %% 获取当前花色的手牌组合
-
   Rep = make_rep(Hand),
   L = [fun is_straight_flush/2,
     fun is_four_kind/2,
@@ -62,7 +54,7 @@ is_straight_flush(Hand, Rep) ->
         none;
       Hand1 ->
         High = Hand1#hand.high2,
-        case is_straight(Hand, [High, High, High, High]) of
+        case is_straight(Hand, High) of
           none ->
             none;
           Hand2 ->
@@ -86,18 +78,19 @@ is_flush(Hand, [H|T], Suit) ->
 is_flush(_, [], _) ->
     none.
 
-is_straight(Hand, Rep) ->
+is_straight(Hand, Rep) when is_list(Rep) ->
     Mask = make_mask(Rep),
-    is_straight(Hand, Mask, Rep).
+    is_straight(Hand, Mask);
 
-is_straight(Hand, Mask, Rep) when is_list(Rep) ->
+is_straight(Hand, Mask) ->
     if 
 		Mask band 2#10000000000000 > 0 ->  %% contains card A
       		Mask1 = Mask bor 1;
   		true ->
      	 	Mask1 = Mask
     end,                       %AKQJT98765432A
-    is_straight(Hand, Mask1, 2#11111000000000);
+    is_straight(Hand, Mask1, 2#11111000000000).
+
 
 is_straight(_, _, Mask) when Mask < 2#11111 ->
     none;
@@ -111,14 +104,14 @@ is_straight(Hand, Value, Mask)
       		is_straight(Hand, Value, Mask bsr 1)
     end.
   
-is_four_kind(Hand, [C, D, H, S]) ->
+is_four_kind(Hand, Rep = [C, D, H, S]) ->
     Value = C band D band H band S,
     if
   Value > 0 ->
             Hand#hand{ 
               rank = ?HC_FOUR_KIND, 
               high1 = Value, 
-              score = score([C, D, H, S], Value, 1)
+              score = score(Rep, Value, 1)
              };
   true ->
       none
@@ -158,7 +151,7 @@ is_three_kind(Hand, [H|T], Rep) ->
   H > 0 ->
             Hand#hand{
               rank = ?HC_THREE_KIND, 
-              high1 = high_bit(H), 
+              high1 = bits:clear_extra_bits(H,1), 
               score = score(Rep, H, 2)
              };
   true ->
@@ -203,7 +196,7 @@ is_pair(Hand, [H|T], Rep) ->
   H > 0 ->
             Hand#hand{ 
               rank = ?HC_PAIR, 
-              high1 = high_bit(H), 
+              high1 = bits:clear_extra_bits(H, 1), 
               score = score(Rep, H, 3)
              };
   true ->
@@ -233,8 +226,6 @@ make_rep([], Rep) ->
 make_mask([C, D, H, S]) ->
     C bor D bor H bor S.
 
-high_bit(Mask) ->
-    1 bsl bits:log2(Mask).
 
 clear_high_bit([C, D, H, S], High) ->
     [C band (bnot High),
@@ -305,6 +296,7 @@ make_card([H, T]) ->
 make_card(Face, Suit) ->
     (Face bsl 8) bor Suit.
 
+% Get the highest card face
 face_from_mask(0) ->
     0;
 
@@ -887,5 +879,3 @@ print_rep({C, D, H, S}) ->
     io:format("H: ~14.2.0B~n", [H]),
     io:format("S: ~14.2.0B~n", [S]).
 
-
-    
