@@ -237,7 +237,8 @@
 					game,
 					player,
 					amount,
-				  cost	
+				  	cost,
+					potid
 				 }).
 
 -define(CMD_NOTIFY_HAND, 27).

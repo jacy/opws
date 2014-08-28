@@ -528,7 +528,8 @@ notify_win() ->
              game(),
              player(),
              amount(),
-             amount()
+             amount(),
+			 int()
             }).
 
 notify_hand() ->
