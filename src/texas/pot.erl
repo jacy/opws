@@ -1,35 +1,37 @@
 -module(pot).
 
--export([new/0, reset/1, new_stage/1, split/3,
+-export([new/0, reset/1, new_stage/1,
          add/4, pots/1, total/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
+%% Questions
+%% 1. What if A bet 10, B all in 8, and A fold ? B just win 8, A lose 10?
+%% 2. What if A bet 10, B allin 8, C allin 5? how many side pots?
+
 -record(side_pot, {
           members,
-          all_in,
-		  id = 0
+          all_in
          }).
 
 -record(pot, {
           active = [],
           inactive = [],
-          current = new_side_pot(0)
+          current = new_side_pot()
          }).
 
-new_side_pot(AllInAmt, Members, Id) ->
+new_side_pot(AllInAmt, Members) ->
     #side_pot{ 
               all_in = AllInAmt, 
-              members = Members,
-			  id=Id
+              members = Members
              }.
 
-new_side_pot(AllInAmt, Id) 
+new_side_pot(AllInAmt) 
   when is_number(AllInAmt) ->
-    new_side_pot(AllInAmt, gb_trees:empty(), Id).
+    new_side_pot(AllInAmt, gb_trees:empty()).
 
-new_side_pot(Id) ->
-    new_side_pot(0, gb_trees:empty(), Id).
+new_side_pot() ->
+    new_side_pot(0, gb_trees:empty()).
 
 new() ->
     #pot{}.
@@ -47,12 +49,17 @@ new_stage(Pot)
     Pot#pot { 
       active = [], 
       inactive = Inactive, 
-      current = new_side_pot(CurrentPot#side_pot.id + 1)
+      current = new_side_pot()
      }.
 
 pots(Pot)
   when is_record(Pot, pot) ->
-    [{total(P), P#side_pot.members, P#side_pot.id} || P <- side_pots(Pot)].
+	SortedPots = sort_pots(side_pots(Pot)),
+	{Winners,_} = lists:mapfoldl(fun(P,Index) ->  
+										 {{total(P), P#side_pot.members, Index},Index + 1}
+								end,
+								0,SortedPots),
+    Winners.
 
 add(Pot, Player, Amount, IsAllIn)
   when is_record(Pot, pot) ->
@@ -76,52 +83,69 @@ make_member(Pot, Player) ->
 %% Add up to all-in amount if pot is split
 %% and simply assign the amount if not
 
-add_bet(Pot, Player, Amount) when is_record(Pot, side_pot) ->
+add_side_pot(Pot, _, {0, NewActives}) when is_record(Pot, side_pot) ->
+	NewActives1 = [Pot | NewActives],
+    {Pot, {0, NewActives1}};
+
+add_side_pot(Pot, Player, {Amount, NewActives}) when is_record(Pot, side_pot) ->
     {NewPot, Bet} = make_member(Pot, Player),
     AllIn = NewPot#side_pot.all_in,
-    {Unallocated, Members} = 
+    {Unallocated,NewActives1} = 
         if
             AllIn > 0 ->
-                %% Pot is split, figure out
-                %% the difference between amount bet
-                %% so far and the all-in amount
+                %% Pot is split, figure out the difference between amount bet so far and the all-in amount
                 Delta = AllIn - Bet,
                 if 
                     Delta > 0 ->
                         %% Post all-in
                         U = Amount - Delta,
-                        M = gb_trees:enter(Player, AllIn, Pot#side_pot.members),
-                        {U, M};
+						if
+							% All in amount getting smaller,etc. A allin 10, B allin 8.
+							U < 0 ->
+								{OldPot, NewPot1} = split(NewPot, Player, Amount, -U),
+								NewActives2 = [OldPot | NewActives],
+								{0, [NewPot1 | NewActives2]};
+						     true ->
+                        		M = gb_trees:enter(Player, AllIn, Pot#side_pot.members),
+								NewPot1 = NewPot#side_pot{ members = M}, 
+                        		{U, [NewPot1 | NewActives]}
+						end;
                     true ->
                         %% Posted enough already
-                        {Amount, Pot#side_pot.members}
+						NewPot1 = NewPot,
+						{Amount, [NewPot | NewActives]}
                 end;
             true ->
                 %% Pot is not split, post Amount
                 M = update_counter(Player, Amount, Pot#side_pot.members),
-                {0, M}
+                NewPot1 = NewPot#side_pot{ members = M}, 
+				{0, [NewPot1 | NewActives]}
         end,
-    NewPot1 = NewPot#side_pot{ 
-                members = Members 
-               }, 
-    {NewPot1, Unallocated};
+    {NewPot1, {Unallocated, NewActives1}};
+
+add_side_pot(Pot, Player, Amount) when is_record(Pot, side_pot) ->
+	add_side_pot(Pot, Player, {Amount, []}).
 
 add_bet(Pot, Player, Amount) when is_record(Pot, pot) ->
     add_bet(Pot, Player, Amount, false).
 
 add_bet(Pot, Player, Amount, IsAllIn) when is_record(Pot, pot) ->
     %% add to prior pots as needed
-    {Active, Unallocated} = allocate_bet(Pot#pot.active, Player, Amount),
+    {_, {Unallocated, NewActives}} = allocate_bet(Pot#pot.active, Player, Amount),
     Pot1 = Pot#pot {
-             active = Active
-            },
+    	active = lists:reverse(NewActives)
+    },
     if
+		Unallocated == 0 ->
+			Pot2 = Pot1,
+			Rest = 0,
+			IsAllIn = true; % Assertion: IsAllIn have to be true;
         IsAllIn ->
             %% split the pot
-            Pot2 = split(Pot1, Player, Unallocated),
+            Pot2 = split_current(Pot1, Player, Unallocated),
             Rest = 0;
         true ->
-            {Current, Rest} = add_bet(Pot1#pot.current, Player, Unallocated),
+            {Current, {Rest, _}} = add_side_pot(Pot1#pot.current, Player, Unallocated),
             Pot2 = Pot1#pot {
                      current = Current
                     }
@@ -129,10 +153,10 @@ add_bet(Pot, Player, Amount, IsAllIn) when is_record(Pot, pot) ->
     {Pot2, Rest}.
 
 allocate_bet(SidePots, Player, Amount) when is_list(SidePots) ->
-    lists:mapfoldl(fun(Pot, Unallocated) ->
-                           add_bet(Pot, Player, Unallocated)
+    lists:mapfoldl(fun(Pot, {Unallocated, NewActives}) ->
+                           add_side_pot(Pot, Player, {Unallocated, NewActives})
                    end, 
-                   Amount, SidePots).
+                   {Amount,[]}, SidePots).
 
 side_pots(Pot) ->
     Temp = lists:append(Pot#pot.active, Pot#pot.inactive),
@@ -141,6 +165,16 @@ side_pots(Pot) ->
                          gb_trees:size(P#side_pot.members) > 0
                              andalso total(P) > 0
                  end, [Current|Temp]).
+
+sort_pots(SidePots) ->
+    Sort = fun(S1,S2) ->
+			if 
+				S1#side_pot.all_in == 0 -> true;
+				S2#side_pot.all_in == 0 -> false;
+				true -> gb_trees:size(S1#side_pot.members) >= gb_trees:size(S2#side_pot.members)
+			end
+	end,
+	lists:sort(Sort, SidePots).
 
 total(Pot) when is_record(Pot, side_pot) ->
     F = fun(X, Acc) -> X + Acc end,
@@ -157,15 +191,15 @@ total(Pot) when is_record(Pot, pot) ->
 %% Bets in excess of the all-in amount are moved 
 %% to a new side pot.
 
-split(Pot, Player, Amount) when is_record(Pot, pot) ->
-    {OldPot, NewPot} = split(Pot#pot.current, Player, Amount),
+split_current(Pot, Player, Amount) when is_record(Pot, pot) ->
+    {OldPot, NewPot} = split(Pot#pot.current, Player, Amount, 0),
     Active = lists:append(Pot#pot.active, [OldPot]),
     Pot#pot { 
       current = NewPot, 
       active = Active 
-     };
+     }.
 
-split(SidePot, Player, Amount) ->
+split(SidePot, Player, Amount, AllIn)  when is_record(SidePot, side_pot)  ->
     M = update_counter(Player, Amount, SidePot#side_pot.members),
     SidePot1 = SidePot#side_pot { 
                  members = M 
@@ -180,9 +214,8 @@ split(SidePot, Player, Amount) ->
                               {Key, Value - Bet}
                       end, List1),
     NewPot = #side_pot {
-      all_in = 0,
-      members = gb_trees:from_orddict(List2),
-	  id = SidePot1#side_pot.id + 1
+      all_in = AllIn,
+      members = gb_trees:from_orddict(List2)
      },
     Members2 = lists:map(fun({Key, Value}) -> 
                                  if 
@@ -211,70 +244,63 @@ update_counter(Key, Amount, Tree) ->
 
 is_member(Pot, Player) 
   when is_record(Pot, side_pot) ->
-    gb_trees:is_defined(Player, Pot#side_pot.members).
+    is_member(Pot#side_pot.members,Player);
+
+is_member(Members,Player)  ->
+    gb_trees:is_defined(Player, Members).
 
 %% Pot is split, Delta > 0
 
 split_pot_positive_delta_test() ->
-    Pot = new_side_pot(100,0),
-    {NewPot, Amount} = add_bet(Pot, 'P', 120),
+    Pot = new_side_pot(100),
+    {NewPot, {Amount,_}} = add_side_pot(Pot, 'P', 120),
     ?assertEqual(20, Amount),
     ?assertEqual(true, is_member(NewPot, 'P')),
-    ?assertEqual(100, total(NewPot)),
-    ?assertEqual(0, Pot#side_pot.id).
+    ?assertEqual(100, total(NewPot)).
 
 %% Pot is split, Delta <= 0
 
 split_pot_negative_delta_test() ->
-    Pot = new_side_pot(100,0),
-    {NewPot, Amount} = add_bet(Pot, 'P', 100),
+    Pot = new_side_pot(100),
+    {NewPot,  {Amount,_}} = add_side_pot(Pot, 'P', 100),
     ?assertEqual(0, Amount),
     ?assertEqual(true, is_member(NewPot, 'P')),
-    ?assertEqual(100, total(NewPot)),
-	?assertEqual(0, Pot#side_pot.id).
+    ?assertEqual(100, total(NewPot)).
 
 %% Pot is not split
 
 pot_not_split_test() ->
-    Pot = new_side_pot(0),
-    {NewPot, Amount} = add_bet(Pot, 'P', 100),
+    Pot = new_side_pot(),
+    {NewPot,  {Amount,_}} = add_side_pot(Pot, 'P', 100),
     ?assertEqual(0, Amount),
     ?assertEqual(true, is_member(NewPot, 'P')),
     ?assertEqual(100, total(NewPot)),
-	?assertEqual(0, Pot#side_pot.id),
-	?assertEqual(0, NewPot#side_pot.id),
-    {NewPot1, Amount1} = add_bet(NewPot, 'P', 100),
+    {NewPot1,  {Amount1,_}} = add_side_pot(NewPot, 'P', 100),
     ?assertEqual(0, Amount1),
-    ?assertEqual(200, total(NewPot1)),
-	?assertEqual(0, NewPot1#side_pot.id).
+    ?assertEqual(200, total(NewPot1)).
 
 %% Split pot
 
 pot_split_test() ->
     Pot = new_side_pot(0),
     Pot1 = Pot#side_pot{ 
-             members = gb_trees:insert('A', 10, Pot#side_pot.members),
-			 id = 1
+             members = gb_trees:insert('A', 10, Pot#side_pot.members)
             },
     Pot2 = Pot1#side_pot{ 
-             members = gb_trees:insert('B', 30, Pot1#side_pot.members),
-			 id = 2
+             members = gb_trees:insert('B', 30, Pot1#side_pot.members)
             },
     Pot3 = Pot2#side_pot{ 
-             members = gb_trees:insert('C', 40, Pot2#side_pot.members),
-			 id=3
+             members = gb_trees:insert('C', 40, Pot2#side_pot.members)
             },
-    {OldPot, NewPot} = split(Pot3, 'A', 10),
+    {OldPot, NewPot} = split(Pot3, 'A', 10, 0),
     ?assertEqual(20, OldPot#side_pot.all_in),
     ?assertEqual(20, gb_trees:get('A', OldPot#side_pot.members)),
     ?assertEqual(20, gb_trees:get('B', OldPot#side_pot.members)),
     ?assertEqual(20, gb_trees:get('C', OldPot#side_pot.members)),
-	?assertEqual(3, OldPot#side_pot.id),
     ?assertEqual(0, NewPot#side_pot.all_in),
     ?assertEqual(10, gb_trees:get('B', NewPot#side_pot.members)),
     ?assertEqual(20, gb_trees:get('C', NewPot#side_pot.members)),
-    ?assertEqual(false, is_member(NewPot, 'A')),
-	?assertEqual(4, NewPot#side_pot.id).
+    ?assertEqual(false, is_member(NewPot, 'A')).
 
 %% % ;;; http://www.homepokertourney.com/allin_examples.htm
 
@@ -282,10 +308,8 @@ all_in_example5_test() ->
     Pot = new(),
     { Pot1, Amt1 } = add_bet(Pot, 'A', 100),
     ?assertEqual(0, Amt1),
-	?assertEqual(0, (Pot1#pot.current)#side_pot.id),
     { Pot2, Amt2 } = add_bet(Pot1, 'B', 60, true),
     ?assertEqual(0, Amt2),
-	?assertEqual(1, (Pot2#pot.current)#side_pot.id),
     ?assertEqual(40, total(Pot2#pot.current)),
     ?assertEqual(true, is_member(Pot2#pot.current, 'A')),
     ?assertEqual(false, is_member(Pot2#pot.current, 'B')),
@@ -302,7 +326,6 @@ all_in_example6_test() ->
     ?assertEqual(true, is_member(Pot3#pot.current, 'A')),
     ?assertEqual(true, is_member(Pot3#pot.current, 'B')),
     ?assertEqual(false, is_member(Pot3#pot.current, 'C')),
-	?assertEqual(1, (Pot3#pot.current)#side_pot.id),
     ?assertEqual(180, total(hd(Pot3#pot.active))),
     ?assertEqual(true, is_member(hd(Pot3#pot.active), 'A')),
     ?assertEqual(true, is_member(hd(Pot3#pot.active), 'B')),
@@ -313,12 +336,10 @@ all_in_example7_test() ->
     { Pot1, 0 } = add_bet(Pot, 'A', 100),
     { Pot2, 0 } = add_bet(Pot1, 'B', 60, true),
     { Pot3, 0 } = add_bet(Pot2, 'C', 100),
-	?assertEqual(1, (Pot2#pot.current)#side_pot.id),
     ?assertEqual(80, total(Pot3#pot.current)),
     ?assertEqual(true, is_member(Pot3#pot.current, 'A')),
     ?assertEqual(true, is_member(Pot3#pot.current, 'C')),
     ?assertEqual(false, is_member(Pot3#pot.current, 'B')),
-	?assertEqual(1, (Pot3#pot.current)#side_pot.id),
     ?assertEqual(180, total(hd(Pot3#pot.active))),
     ?assertEqual(true, is_member(hd(Pot3#pot.active), 'A')),
     ?assertEqual(true, is_member(hd(Pot3#pot.active), 'B')),
@@ -332,12 +353,6 @@ all_in_example8_test() ->
     { Pot4, 0 } = add_bet(Pot3, 'D', 500),
     { Pot5, 0 } = add_bet(Pot4, 'A', 250, true),
     { Pot6, 0 } = add_bet(Pot5, 'C', 400),
-	?assertEqual(0, (Pot1#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot2#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot3#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot4#pot.current)#side_pot.id),
-	?assertEqual(2, (Pot5#pot.current)#side_pot.id),
-	?assertEqual(2, (Pot6#pot.current)#side_pot.id),
     %% there's a main pot between all 4 players
     Side1 = lists:nth(1, Pot6#pot.active),
     ?assertEqual(240, total(Side1)),
@@ -370,12 +385,6 @@ all_in_example9_test() ->
     { Pot6, 0 } = add_bet(Pot5, 'B', 20),
     { Pot7, 0 } = add_bet(Pot6, 'D', 10),
 	
-	?assertEqual(0, (Pot1#pot.current)#side_pot.id),
-	?assertEqual(0, (Pot2#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot3#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot4#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot5#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot6#pot.current)#side_pot.id),
 	
     %% player-a folds but is still
     %% member of the last side pot
@@ -402,13 +411,6 @@ all_in_example10_test() ->
     { Pot6, 0 } = add_bet(Pot5, 'B', 20),
     { Pot7, 0 } = add_bet(Pot6, 'D', 10),
 	
-	?assertEqual(0, (Pot1#pot.current)#side_pot.id),
-	?assertEqual(0, (Pot2#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot3#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot4#pot.current)#side_pot.id),
-	?assertEqual(2, (Pot5#pot.current)#side_pot.id),
-	?assertEqual(2, (Pot6#pot.current)#side_pot.id),
-	?assertEqual(2, (Pot7#pot.current)#side_pot.id),
 	
 	
     Side = lists:nth(1, Pot7#pot.active),
@@ -437,10 +439,6 @@ all_in_example11_test() ->
     { Pot3, 0 } = add_bet(Pot2, 'C', 8, true),
     { Pot4, 0 } = add_bet(Pot3, 'D', 10),
 	
-	?assertEqual(1, (Pot1#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot2#pot.current)#side_pot.id),
-	?assertEqual(2, (Pot3#pot.current)#side_pot.id),
-	?assertEqual(2, (Pot4#pot.current)#side_pot.id),
 	
     Side = lists:nth(1, Pot4#pot.active),
     ?assertEqual(20, total(Side)),
@@ -468,12 +466,6 @@ all_in_example12_test() ->
     { Pot3, 0 } = add_bet(Pot2, 'C', 7, true),
     { Pot4, 0 } = add_bet(Pot3, 'D', 10),
 	
-	?assertEqual(0, (Pot1#pot.current)#side_pot.id),
-	?assertEqual(0, (Pot2#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot3#pot.current)#side_pot.id),
-	?assertEqual(1, (Pot4#pot.current)#side_pot.id),
-	
-	
     Side = lists:last(Pot4#pot.active),
     ?assertEqual(28, total(Side)),
     ?assertEqual(true, is_member(Side, 'A')),
@@ -487,11 +479,109 @@ all_in_example12_test() ->
     ?assertEqual(true, is_member(Side2, 'D')),
     ?assertEqual(false, is_member(Side2, 'C')).
 
-all_in_example13_test() ->
+multiple_all_in_with_same_amount_test() ->
     Pot = new(),
-    { Pot1, 0 } = add_bet(Pot, 'A', 20),
-    { Pot2, 0 } = add_bet(Pot1, 'B', 10),
-    ?assertEqual(30, total(Pot2)),
-	?assertEqual(0, (Pot1#pot.current)#side_pot.id),
-	?assertEqual(0, (Pot2#pot.current)#side_pot.id).
+    { Pot1, 0 } = add_bet(Pot, 'A', 10),
+    { Pot2, 0 } = add_bet(Pot1, 'B', 8, true),
+    { Pot3, 0 } = add_bet(Pot2, 'C', 8, true),
+    ?assertEqual(0, length(Pot3#pot.inactive)),
+    ?assertEqual(1, length(Pot3#pot.active)),
+	
+    Side = lists:nth(1, Pot3#pot.active),
+    ?assertEqual(24, total(Side)),
+    ?assertEqual(true, is_member(Side, 'A')),
+    ?assertEqual(true, is_member(Side, 'B')),
+    ?assertEqual(true, is_member(Side, 'C')),
+	
+    Side2 = Pot3#pot.current,
+    ?assertEqual(2, total(Side2)),
+    ?assertEqual(true, is_member(Side2, 'A')),
+    ?assertEqual(false, is_member(Side2, 'B')),
+    ?assertEqual(false, is_member(Side2, 'C')).
 
+multiple_all_in_with_amount_getting_smaller_test() ->
+    Pot = new(),
+    { Pot1, 0 } = add_bet(Pot, 'A', 10),
+    { Pot2, 0 } = add_bet(Pot1, 'B', 8, true),
+    { Pot3, 0 } = add_bet(Pot2, 'C', 7, true),
+
+	?assertEqual(0, length(Pot3#pot.inactive)),
+    ?assertEqual(2, length(Pot3#pot.active)),
+
+    Side = lists:nth(1, Pot3#pot.active),
+    ?assertEqual(21, total(Side)),
+    ?assertEqual(true, is_member(Side, 'A')),
+    ?assertEqual(true, is_member(Side, 'B')),
+    ?assertEqual(true, is_member(Side, 'C')),
+	
+    Side1 = lists:nth(2, Pot3#pot.active),
+    ?assertEqual(2, total(Side1)),
+    ?assertEqual(true, is_member(Side1, 'A')),
+    ?assertEqual(true, is_member(Side1, 'B')),
+    ?assertEqual(false, is_member(Side1, 'C')),
+
+    Side2 = Pot3#pot.current,
+    ?assertEqual(2, total(Side2)),
+    ?assertEqual(true, is_member(Side2, 'A')),
+    ?assertEqual(false, is_member(Side2, 'B')),
+    ?assertEqual(false, is_member(Side2, 'C')).
+
+multiple_all_in_with_amount_getting_smaller2_test() ->
+    Pot = new(),
+    { Pot1, 0 } = add_bet(Pot, 'A', 5,true),
+    { Pot2, 0 } = add_bet(Pot1, 'B', 8, true),
+    { Pot3, 0 } = add_bet(Pot2, 'C', 7, true),
+
+	?assertEqual(0, length(Pot3#pot.inactive)),
+    ?assertEqual(3, length(Pot3#pot.active)),
+
+    Side = lists:nth(1, Pot3#pot.active),
+    ?assertEqual(15, total(Side)),
+    ?assertEqual(true, is_member(Side, 'A')),
+    ?assertEqual(true, is_member(Side, 'B')),
+    ?assertEqual(true, is_member(Side, 'C')),
+	
+    Side1 = lists:nth(2, Pot3#pot.active),
+    ?assertEqual(4, total(Side1)),
+    ?assertEqual(false, is_member(Side1, 'A')),
+    ?assertEqual(true, is_member(Side1, 'B')),
+    ?assertEqual(true, is_member(Side1, 'C')),
+
+    Side2 = lists:last(Pot3#pot.active),
+    ?assertEqual(1, total(Side2)),
+    ?assertEqual(false, is_member(Side2, 'A')),
+    ?assertEqual(true, is_member(Side2, 'B')),
+    ?assertEqual(false, is_member(Side2, 'C')),
+
+    Side3 = Pot3#pot.current,
+    ?assertEqual(0, total(Side3)),
+    ?assertEqual(false, is_member(Side3, 'A')),
+    ?assertEqual(false, is_member(Side3, 'B')),
+    ?assertEqual(false, is_member(Side3, 'C')).
+	
+winner_test() ->
+	Pot = new(),
+    { Pot1, 0 } = add_bet(Pot, 'A', 5,true),
+    { Pot2, 0 } = add_bet(Pot1, 'B', 8, true),
+    { Pot3, 0 } = add_bet(Pot2, 'C', 7, true),
+	Winners = pots(Pot3),
+ 	{MainPot,MainMembers,PotId} = lists:nth(1, Winners),
+    ?assertEqual(15, MainPot),
+    ?assertEqual(0, PotId),
+    ?assertEqual(true, is_member(MainMembers, 'A')),
+    ?assertEqual(true, is_member(MainMembers, 'B')),
+    ?assertEqual(true, is_member(MainMembers, 'C')),
+
+	{SidePot1,SideMembers1,PotId1} = lists:nth(2, Winners),
+    ?assertEqual(4, SidePot1),
+    ?assertEqual(1, PotId1),
+    ?assertEqual(false, is_member(SideMembers1, 'A')),
+    ?assertEqual(true, is_member(SideMembers1, 'B')),
+    ?assertEqual(true, is_member(SideMembers1, 'C')),
+
+	{SidePot2,SideMembers2,PotId2} = lists:last(Winners),
+    ?assertEqual(1, SidePot2),
+    ?assertEqual(2, PotId2),
+    ?assertEqual(false, is_member(SideMembers2, 'A')),
+    ?assertEqual(true, is_member(SideMembers2, 'B')),
+    ?assertEqual(false, is_member(SideMembers2, 'C')).
