@@ -5,7 +5,7 @@
 -include("texas.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -define(COMMISSION,0.00).
--define(DELAY_UNIT,2000).
+-define(DELAY_UNIT,1500).
 
 start(Game, Ctx, []) ->
   g:show_cards(Game, Ctx#texas.b),
@@ -14,7 +14,8 @@ start(Game, Ctx, []) ->
   notify_hands(Game, Ranks),
 
   Pots = g:pots(Game),
-  Winners = gb_trees:to_list(winners(Ranks, Pots)),
+  Winners = hand:winners(Ranks, Pots),
+  
   ?LOG([{winners, Winners}]),
   Game1 = notify_winners(Game, Winners),
 
@@ -22,7 +23,7 @@ start(Game, Ctx, []) ->
   {_, Big} = (Game1#game.limit):blinds(Game1#game.low, Game1#game.high),
   Game2 = check_inplay(g:get_seats(Game, ?PS_ANY), Big, Game1),
 
-  WinDelay = winner_length(Winners, 0)  * ?DELAY_UNIT,
+  WinDelay = length(Winners)  * ?DELAY_UNIT,
   Delay = case Ctx#texas.stage of
 	  ?GS_RIVER -> ?DELAY_UNIT + WinDelay;
 	  _ -> WinDelay
@@ -38,14 +39,6 @@ start(Game, Ctx, []) ->
 %%%
 %%% Utility
 %%%
-
-winner_length([],Count) ->
-  Count;
-
-winner_length([{_, Pots}|T],Count) ->
-  WinCount = length(gb_trees:to_list(Pots)),
-  winner_length(T, WinCount + Count).
-
 notify_hands(_, []) ->
     ok;
 
@@ -62,17 +55,11 @@ notify_hands(Game, [H|T]) ->
 notify_winners(Game, []) ->
     Game;
 
-notify_winners(Game, [{H, Pots}|T]) ->
-    WinPots = gb_trees:to_list(Pots),
-	Game1 = notify_winner(Game, H, WinPots),
+notify_winners(Game, [ W = #winner{} |T]) ->
+	Game1 = notify_winner(Game, W),
     notify_winners(Game1, T).
 
-notify_winner(Game, _H, []) ->
-    Game;
-
-notify_winner(Game, H, [{ PotId, Amount}|T]) ->
-    Player = H#hand.player,
-    PID = H#hand.pid,
+notify_winner(Game, #winner{player = Player,amount = Amount, pid=PID, potid=PotId} ) ->
 	Cost = trunc(Amount * ?COMMISSION),
     Game1 = g:inplay_plus(Game, Player, Amount - Cost),
     Event = #notify_win{ 
@@ -83,62 +70,7 @@ notify_winner(Game, H, [{ PotId, Amount}|T]) ->
 	  potid=PotId
      },
 	?LOG([{notifyWinner,Event}]),
-    g:broadcast(Game1, Event),
-    notify_winner(Game1,H, T).
-
-winners(Ranks, Pots) ->
-    winners(Ranks, Pots, gb_trees:empty()).
-
-winners(_Ranks, [], Winners) ->
-    Winners;
-
-winners(Ranks, [{Total, Members, PotId}|Rest], Winners) ->
-    M = lists:filter(fun(Hand) -> 
-                             gb_trees:is_defined(Hand#hand.player, Members) 
-                     end, Ranks),
-    %% sort by rank and leave top ranks only
-    M1 = lists:reverse(lists:keysort(5, M)),
-    TopRank = element(5, hd(M1)),
-    M2 = lists:filter(fun(R) -> element(5, R) == TopRank end, M1),
-    %% sort by high card and leave top high cards only
-    M3 = lists:reverse(lists:keysort(6, M2)),
-    TopHigh1 = element(6, hd(M3)),
-    M4 = lists:filter(fun(R) -> element(6, R) == TopHigh1 end, M3),
-    M5 = lists:reverse(lists:keysort(7, M4)),
-    TopHigh2 = element(7, hd(M5)),
-    M6 = lists:filter(fun(R) -> element(7, R) == TopHigh2 end, M5),
-    %% sort by top score and leave top scores only
-    M7 = lists:reverse(lists:keysort(8, M6)),
-    TopScore = element(8, hd(M7)),
-    M8 = lists:filter(fun(R) -> element(8, R) == TopScore end, M7),
-    Win = Total / length(M8),
-   Winners1 = update_winners(M8, Win,PotId, Winners),
-    winners(Ranks, Rest, Winners1).
-
-update_winners([], _Amount, _PotId, Tree) ->
-    Tree;
-
-update_winners([Player|Rest], Amount, PotId, Tree) ->
-    update_winners(Rest, Amount, PotId,
-                   update_counter(Player, Amount, PotId, Tree)).
-
-update_counter(Key, Amount, PotId, Tree) ->
-    case gb_trees:lookup(Key, Tree) of
-        {value, Old} ->
-            gb_trees:update(Key, update_value(PotId, Amount, Old), Tree);
-        none ->
-            gb_trees:insert(Key,  gb_trees:insert(PotId, Amount, gb_trees:empty()), Tree)
-    end.
-
-update_value(Key, Amount, Tree) ->
-    case gb_trees:lookup(Key, Tree) of
-        {value, Old} ->
-            Old = gb_trees:get(Key, Tree),
-            gb_trees:update(Key, Old + Amount, Tree);
-        none ->
-            gb_trees:insert(Key, Amount, Tree)
-    end.
-
+    g:broadcast(Game1, Event).
 
 check_inplay([], _Big, Game) ->
   Game;

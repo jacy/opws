@@ -3,7 +3,8 @@
 -export([new/2, new/3, add/2, rank/1]).
 
 -export([make_card/1, make_card/2, make_cards/1, print_bin/1, 
-         print_rep/1, to_string/1, player_hand/1, card_to_string/1, face_from_mask/1]).
+         print_rep/1, to_string/1, player_hand/1, card_to_string/1, face_from_mask/1,
+		 winners/2]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -416,9 +417,59 @@ player_hand(#hand{ rank = Rank, high1 = High3, suit = Suit })
 player_hand(#hand{ rank = Rank, high1 = High }) ->
     #player_hand{ rank = Rank, high1 = face_from_mask(High) }.
 
+
+winners(Ranks, Pots) ->
+    winners(Ranks, Pots, []).
+
+winners(_Ranks, [], Winners) ->
+    Winners;
+
+winners(Ranks, [{Total, Members, PotId} | Rest], Winners) ->
+    M = lists:filter(fun(Hand) -> 
+                             gb_trees:is_defined(Hand#hand.player, Members) 
+                     end, Ranks),
+	F = fun(A, B) ->
+         short(A) >= short(B)
+    end,
+
+	M1 = lists:sort(F, M),
+	
+	TopRank = hd(M1),
+	
+	M2 = lists:filter(fun(Hand) -> 
+							  short(Hand) == short(TopRank) 
+					  end, M1),
+	
+    Win = erlang:trunc(Total / length(M2)),
+    Winners1 = add_winners(M2, PotId, Win, Winners),
+    winners(Ranks, Rest, Winners1).
+
+add_winners([],_,_,Winners) ->
+	lists:reverse(Winners);
+
+add_winners([H = #hand{} | T ], PotId, Win, Winners) ->
+	Winner = #winner{
+				player = H#hand.player,
+    			pid = H#hand.pid,
+				potid = PotId,
+				amount=Win	 
+			},
+	add_winners(T, PotId, Win, [Winner | Winners]).
+
+
+
 %%%
 %%% Test suite
 %%%
+
+members(Members) ->
+            members(Members, gb_trees:empty()).
+
+members([], Members) ->
+            Members;
+
+members([M | T ], Members) ->
+            members(T, gb_trees:enter(M, 0, Members)).
 
 make_rep_test() ->
     %%  AKQJT98765432A
@@ -429,7 +480,10 @@ make_rep_test() ->
   = make_rep(make_cards("4D JH 5D 8C QD TD 7H")).
 
 rank_test_hand(Cards) ->
-    Hand = new(0, 0, make_cards(Cards)),
+    rank_test_hand(0, Cards).
+
+rank_test_hand(Player,Cards) ->
+    Hand = new(Player, Player, make_cards(Cards)),
     rank(Hand).
 
 rank_test_player_hand(Cards) ->
@@ -659,65 +713,165 @@ rank_straight_flush4_test() ->
     ?assertEqual(0, H#hand.score).
 
 high_card_win_test() ->
-    H1 = rank_test_hand("4D JH 5D 8C QD TD 7H"),
-    H2 = rank_test_hand("8C AD 5H 3S KD 9D 4D"),
-    H3 = rank_test_hand("4C JH 5C 8D QC 2C 3D"),
+    H1 = rank_test_hand('A',"4D JH 5D 8C QD TD 7H"),
+    H2 = rank_test_hand('B',"8C AD 5H 3S KD 9D 4D"),
+    H3 = rank_test_hand('C',"4C JH 5C 8D QC 2C 3D"),
     ?assertEqual(?HC_HIGH_CARD, H1#hand.rank),
     ?assertEqual(?HC_HIGH_CARD, H2#hand.rank),
     ?assertEqual(?HC_HIGH_CARD, H3#hand.rank),
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
-    ?assertEqual(true, short(H1) > short(H3)).
+    ?assertEqual(true, short(H1) > short(H3)),
 
-pair_win_test() ->
-    H1 = rank_test_hand("KD 3S 5H 3D 6C QH 9S"),
-    H2 = rank_test_hand("AC 2D 5D AS 4H 9D KD"),
-    H3 = rank_test_hand("9S JH 5D TS 3C KC 3H"),
+	Members = members(['A','B','C']),
+	PotAmount = 100,
+	PotId = 1,
+	Winners = winners([H1,H2,H3], [{PotAmount, Members, PotId}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=PotAmount,pid='B',player='B',potid=PotId}, lists:nth(1,Winners)).
+
+high_card_win1_test() ->
+    H1 = rank_test_hand('A',"AD KH TD 8C 6D 5D 3S"),
+    H2 = rank_test_hand('B',"AH KD TS 8D 6C 5C 2S"),
+    H3 = rank_test_hand('C',"AH KC TD 8C 5S 2S 3S"),
+    H4 = rank_test_hand('D',"KD TS 8D 6C 5S QS 9D"),
+    ?assertEqual(?HC_HIGH_CARD, H1#hand.rank),
+    ?assertEqual(?HC_HIGH_CARD, H2#hand.rank),
+    ?assertEqual(true, short(H2) == short(H1)),
+    ?assertEqual(true, short(H2) > short(H3)),
+    ?assertEqual(true, short(H3) > short(H4)),
+	
+	Members = members(['A','B','C','D']),
+	PotAmount = 100,
+	PotId = 1,
+	Winners = winners([H1,H2,H3,H4], [{PotAmount, Members, PotId}], []),
+	?assertEqual(2, length(Winners)),
+	?assertEqual(#winner{amount=50,pid='A',player='A',potid=PotId}, lists:nth(1,Winners)),
+	?assertEqual(#winner{amount=50,pid='B',player='B',potid=PotId}, lists:nth(2,Winners)).
+
+pair_win_on_pair_test() ->
+    H1 = rank_test_hand('A',"KD 3S 5H 3D 6C QH 9S"),
+    H2 = rank_test_hand('B',"AC 2D 5D AS 4H 9D KD"),
+    H3 = rank_test_hand('C',"9S JH 5D TS 3C KC 3H"),
     ?assertEqual(?HC_PAIR, H1#hand.rank),
     ?assertEqual(?HC_PAIR, H2#hand.rank),
     ?assertEqual(?HC_PAIR, H3#hand.rank),
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
-    ?assertEqual(true, short(H1) > short(H3)).
+    ?assertEqual(true, short(H1) > short(H3)),
+	
+	Members = members(['A','B','C']),
+	PotAmount = 100,
+	PotId = 1,
+	Winners = winners([H1,H2,H3], [{PotAmount, Members, PotId}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=PotAmount,pid='B',player='B',potid=PotId}, lists:nth(1,Winners)).
+
+pair_win_on_score_test() ->
+    H1 = rank_test_hand('A',"KD KS 9H 8D 7C 5H 4S"),
+    H2 = rank_test_hand('B',"KD KS 9H 8D TC 5H 4S"),
+    H3 = rank_test_hand('C',"KD KS 9H 8D 7C 5H 4S"),
+    ?assertEqual(?HC_PAIR, H1#hand.rank),
+    ?assertEqual(?HC_PAIR, H2#hand.rank),
+    ?assertEqual(?HC_PAIR, H3#hand.rank),
+    ?assertEqual(true, short(H2) > short(H1)),
+    ?assertEqual(true, short(H2) > short(H3)),
+    ?assertEqual(true, short(H1) == short(H3)),
+	
+	Members = members(['A','B','C']),
+	PotAmount = 100,
+	PotId = 1,
+	Winners = winners([H1,H2,H3], [{PotAmount, Members, PotId}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=PotAmount,pid='B',player='B',potid=PotId}, lists:nth(1,Winners)).
+
+pair_win_multiple_winners_test() ->
+    H1 = rank_test_hand('A',"KD KS 9H 8D 7C 5H 4S"),
+    H2 = rank_test_hand('B',"KD KS 9H 8D 7C 3H 4S"),
+    H3 = rank_test_hand('C',"KD KS 9H 8D 7C 2H 4S"),
+    ?assertEqual(?HC_PAIR, H1#hand.rank),
+    ?assertEqual(?HC_PAIR, H2#hand.rank),
+    ?assertEqual(?HC_PAIR, H3#hand.rank),
+    ?assertEqual(true, short(H2) == short(H1)),
+    ?assertEqual(true, short(H2) == short(H3)),
+    ?assertEqual(true, short(H1) == short(H3)),
+	
+	Members = members(['A','B','C']),
+	PotAmount = 100,
+	PotId = 1,
+	Winners = winners([H1,H2,H3], [{PotAmount, Members, PotId}], []),
+	?assertEqual(3, length(Winners)),
+	?assertEqual(#winner{amount=33,pid='A',player='A',potid=PotId}, lists:nth(1,Winners)),
+	?assertEqual(#winner{amount=33,pid='B',player='B',potid=PotId}, lists:nth(2,Winners)),
+	?assertEqual(#winner{amount=33,pid='C',player='C',potid=PotId}, lists:nth(3,Winners)).
+
 
 two_pair_win_test() ->
-    H1 = rank_test_hand("4D 3S 5H JD JC QH 5S"),
-    H2 = rank_test_hand("AC 2D 5D AS 5H 9D 4D"),
-    H3 = rank_test_hand("9S JH 5D JS 5C KC 3D"),
+    H1 = rank_test_hand('A',"4D 3S 5H JD JC QH 5S"),
+    H2 = rank_test_hand('B',"AC 2D 5D AS 5H 9D 4D"),
+    H3 = rank_test_hand('C',"9S JH 5D JS 5C KC 3D"),
     ?assertEqual(?HC_TWO_PAIR, H1#hand.rank),
     ?assertEqual(?HC_TWO_PAIR, H2#hand.rank),
     ?assertEqual(?HC_TWO_PAIR, H3#hand.rank),
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
-    ?assertEqual(true, short(H3) > short(H1)).
+    ?assertEqual(true, short(H3) > short(H1)),
+	
+	Members = members(['A','B','C']),
+	Winners = winners([H1,H2,H3], [{100, Members, 1}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=100,pid='B',player='B',potid=1}, lists:nth(1,Winners)).
+
+two_pair_multiple_winners_test() ->
+    H1 = rank_test_hand('A',"5C TC 7H KH 5S TS KS"),
+    H2 = rank_test_hand('B',"5C TC 7H KH 5S KC TH"),
+    ?assertEqual(?HC_TWO_PAIR, H1#hand.rank),
+    ?assertEqual(?HC_TWO_PAIR, H2#hand.rank),
+    ?assertEqual(true, short(H1) == short(H2)),
+	
+	Members = members(['A','B']),
+	Winners = winners([H1,H2], [{100, Members, 1}], []),
+	?assertEqual(2, length(Winners)),
+	?assertEqual(#winner{amount=50,pid='A',player='A',potid=1}, lists:nth(1,Winners)),
+	?assertEqual(#winner{amount=50,pid='B',player='B',potid=1}, lists:nth(2,Winners)).
 
 three_kind_win_test() ->    
-    H1 = rank_test_hand("KH 9S 5H QD QC QH 3S"),
-    H2 = rank_test_hand("AC KC KD KS 7H 9D 4D"),
-    H3 = rank_test_hand("KS TS QD QS QH 4C 5D"),
+    H1 = rank_test_hand('A',"KH 9S 5H QD QC QH 3S"),
+    H2 = rank_test_hand('B',"AC KC KD KS 7H 9D 4D"),
+    H3 = rank_test_hand('C',"KS TS QD QS QH 4C 5D"),
     ?assertEqual(?HC_THREE_KIND, H1#hand.rank),
     ?assertEqual(?HC_THREE_KIND, H2#hand.rank),
     ?assertEqual(?HC_THREE_KIND, H3#hand.rank),
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
-    ?assertEqual(true, short(H3) > short(H1)).
+    ?assertEqual(true, short(H3) > short(H1)),
+	
+	Members = members(['A','B','C']),
+	Winners = winners([H1,H2,H3], [{100, Members, 1}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=100,pid='B',player='B',potid=1}, lists:nth(1,Winners)).
 
 straight_win_test() ->
-    H1 = rank_test_hand("KC QS JH TC 9C 4D 3S"),
-    H2 = rank_test_hand("AC KS QH JC TC 9D 4D"),
-    H3 = rank_test_hand("KS QD JS TC 9S 2D 7S"),
+    H1 = rank_test_hand('A',"KC QS JH TC 9C 4D 3S"),
+    H2 = rank_test_hand('B',"AC KS QH JC TC 9D 4D"),
+    H3 = rank_test_hand('C',"KS QD JS TC 9S 2D 7S"),
     ?assertEqual(?HC_STRAIGHT, H1#hand.rank),
     ?assertEqual(?HC_STRAIGHT, H2#hand.rank),
     ?assertEqual(?HC_STRAIGHT, H3#hand.rank),
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
-    ?assertEqual(true, short(H1) == short(H3)).
+    ?assertEqual(true, short(H1) == short(H3)),
+	
+	Members = members(['A','B','C']),
+	Winners = winners([H1,H2,H3], [{100, Members, 1}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=100,pid='B',player='B',potid=1}, lists:nth(1,Winners)).
 
 flush_win_test() ->
-    H1 = rank_test_hand("4D JD 5D JC QD 2D 7H"),
-    H2 = rank_test_hand("8C AD 5D AS KD 9D 4D"),
-    H3 = rank_test_hand("4C JC 5C 8D QC 3C 7S"),
-    H4 = rank_test_hand("4C JC 7C 8D QC 5C 7S"),
+    H1 = rank_test_hand('A',"4D JD 5D JC QD 2D 7H"),
+    H2 = rank_test_hand('B',"8C AD 5D AS KD 9D 4D"),
+    H3 = rank_test_hand('C',"4C JC 5C 8D QC 3C 7S"),
+    H4 = rank_test_hand('D',"4C JC 7C 8D QC 5C 7S"),
     ?assertEqual(?HC_FLUSH, H1#hand.rank),
     ?assertEqual(?HC_FLUSH, H2#hand.rank),
     ?assertEqual(?HC_FLUSH, H3#hand.rank),
@@ -725,61 +879,74 @@ flush_win_test() ->
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
     ?assertEqual(true, short(H3) > short(H1)),
-    ?assertEqual(true, short(H4) > short(H1)).
+    ?assertEqual(true, short(H4) > short(H1)),
+	
+	Members = members(['A','B','C','D']),
+	Winners = winners([H1,H2,H3,H4], [{100, Members, 1}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=100,pid='B',player='B',potid=1}, lists:nth(1,Winners)).
 
 four_kind_win_test() ->
-    H1 = rank_test_hand("4D AS 5H QD QC QH QS"),
-    H2 = rank_test_hand("AC KC KD KS KH 9D 4D"),
-    H3 = rank_test_hand("KS TS QD QS QH QC 5D"),
+    H1 = rank_test_hand('A',"4D AS 5H QD QC QH QS"),
+    H2 = rank_test_hand('B',"AC KC KD KS KH 9D 4D"),
+    H3 = rank_test_hand('C',"KS TS QD QS QH QC 5D"),
     ?assertEqual(?HC_FOUR_KIND, H1#hand.rank),
     ?assertEqual(?HC_FOUR_KIND, H2#hand.rank),
     ?assertEqual(?HC_FOUR_KIND, H3#hand.rank),
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
-    ?assertEqual(true, short(H1) > short(H3)).
+    ?assertEqual(true, short(H1) > short(H3)),
+	
+	Members = members(['A','B','C']),
+	Winners = winners([H1,H2,H3], [{100, Members, 1}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=100,pid='B',player='B',potid=1}, lists:nth(1,Winners)).
 
 straight_flush_win_test() ->
-    H1 = rank_test_hand("KC QC JC TC 9C 4D AS"),
-    H2 = rank_test_hand("AC KC QC JC TC 9D 4D"),
-    H3 = rank_test_hand("KS QS JS TS 9S AD 7S"),
+    H1 = rank_test_hand('A',"KC QC JC TC 9C 4D AS"),
+    H2 = rank_test_hand('B',"AC KC QC JC TC 9D 4D"),
+    H3 = rank_test_hand('C',"KS QS JS TS 9S AD 7S"),
     ?assertEqual(?HC_STRAIGHT_FLUSH, H1#hand.rank),
     ?assertEqual(?HC_STRAIGHT_FLUSH, H2#hand.rank),
     ?assertEqual(?HC_STRAIGHT_FLUSH, H3#hand.rank),
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
-    ?assertEqual(true, short(H1) == short(H3)).
+    ?assertEqual(true, short(H1) == short(H3)),
+	
+	Members = members(['A','B','C']),
+	Winners = winners([H1,H2,H3], [{100, Members, 1}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=100,pid='B',player='B',potid=1}, lists:nth(1,Winners)).
+
 
 full_house_win_test() ->
-    H1 = rank_test_hand("4D JS 5H JD JC QH QS"),
-    H2 = rank_test_hand("AC AD KD AS KH 9D 4D"),
-    H3 = rank_test_hand("3S JH JD JS KH KC 5D"),
+    H1 = rank_test_hand('A',"4D JS 5H JD JC QH QS"),
+    H2 = rank_test_hand('B',"AC AD KD AS KH 9D 4D"),
+    H3 = rank_test_hand('C',"3S JH JD JS KH KC 5D"),
     ?assertEqual(?HC_FULL_HOUSE, H1#hand.rank),
     ?assertEqual(?HC_FULL_HOUSE, H2#hand.rank),
     ?assertEqual(?HC_FULL_HOUSE, H3#hand.rank),
     ?assertEqual(true, short(H2) > short(H1)),
     ?assertEqual(true, short(H2) > short(H3)),
-    ?assertEqual(true, short(H3) > short(H1)).
+    ?assertEqual(true, short(H3) > short(H1)),
+	
+	Members = members(['A','B','C']),
+	Winners = winners([H1,H2,H3], [{100, Members, 1}], []),
+	?assertEqual(1, length(Winners)),
+	?assertEqual(#winner{amount=100,pid='B',player='B',potid=1}, lists:nth(1,Winners)).
 
-two_pair_win1_test() ->
-    H1 = rank_test_hand("5C TC 7H KH 5S TS KS"),
-    H2 = rank_test_hand("5C TC 7H KH 5S KC TH"),
-    ?assertEqual(?HC_TWO_PAIR, H1#hand.rank),
-    ?assertEqual(?HC_TWO_PAIR, H2#hand.rank),
-    ?assertEqual(true, short(H1) == short(H2)).
-
-high_card_win1_test() ->
-    H1 = rank_test_hand("KH TC 9H 7D 6H 5D 2S"),
-    H2 = rank_test_hand("KH TC 9H 7H 6H 3D 2S"),
-    ?assertEqual(?HC_HIGH_CARD, H1#hand.rank),
-    ?assertEqual(?HC_HIGH_CARD, H2#hand.rank),
-    ?assertEqual(true, short(H1) == short(H2)).
-
-full_house_win1_test() ->
-  H1 = rank_test_hand("2H 2C 5H 5S 5C 7C 4D"),
-  H2 = rank_test_hand("2H 2C 5H 5S 5D 4D 2D"),
+full_house_multiple_winners_test() ->
+  H1 = rank_test_hand('A',"2H 2C 5H 5S 5C 7C 4D"),
+  H2 = rank_test_hand('B',"2H 2C 5H 5S 5D 4D 2D"),
   ?assertEqual(?HC_FULL_HOUSE, H1#hand.rank),
   ?assertEqual(?HC_FULL_HOUSE, H2#hand.rank),
-  ?assertEqual(true, short(H1) == short(H2)).
+  ?assertEqual(true, short(H1) == short(H2)),
+  
+  Members = members(['A','B']),
+	Winners = winners([H1,H2], [{100, Members, 1}], []),
+	?assertEqual(2, length(Winners)),
+	?assertEqual(#winner{amount=50,pid='A',player='A',potid=1}, lists:nth(1,Winners)),
+	?assertEqual(#winner{amount=50,pid='B',player='B',potid=1}, lists:nth(2,Winners)).
 
 
 gr(L) ->

@@ -195,7 +195,14 @@
 					rank = ?HC_HIGH_CARD,
 					high1 = ?CF_NONE,
 					high2 = ?CF_NONE,
-          suit = ?CS_NONE
+          			suit = ?CS_NONE
+				 }).
+
+-record(winner, {
+					player,
+					pid,
+					potid,
+					amount
 				 }).
 
 -define(error1(Expr, Expected, Actual),

@@ -56,7 +56,7 @@ pots(Pot)
 										 {{total(P), P#side_pot.members, Index},Index + 1}
 								end,
 								0,SortedPots),
-    Winners.
+    lists:reverse(Winners).
 
 add(Pot, Player, Amount, IsAllIn)
   when is_record(Pot, pot) ->
