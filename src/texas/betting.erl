@@ -62,11 +62,14 @@ betting(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
   Seat = g:get_seat(Game1, Ctx#texas.exp_seat),
   Inplay = Seat#seat.inplay,
 
-  Amt1 = case Amt >= Inplay of
-    true ->
+  IsAllin = case Amt >= Inplay of
+    	    true -> 1;
+			false -> 0
+			end,
+  Amt1 = if IsAllin == 1 ->
       ?LOG([{allin, Inplay}]),
       Inplay; % ALL-IN
-    _ ->
+    true ->
       Amt
   end,
 
@@ -78,7 +81,8 @@ betting(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
     game = Game3#game.gid, 
     player = Seat#seat.pid,
     raise = 0.0,
-    call = Amt1
+    call = Amt1,
+	allin=IsAllin
   },
   Game4 = g:broadcast(Game3, R1),
   Game5 = g:notify_state(Game4, N),
@@ -118,11 +122,16 @@ betting(Game, Ctx, #raise{ player = Player, raise = Amt }) ->
         true ->
           g:set_state(Game3, Player, ?PS_BET)
       end,
+      IsAllin = case Amt + Call == Inplay of
+	    true -> 1;
+		false -> 0
+		end,
       R1 = #notify_raise{ 
         game = Game4#game.gid,
         player = Seat#seat.pid,
         raise = Amt,
-        call = Call
+        call = Call,
+		allin=IsAllin
       },
       Game5 = g:broadcast(Game4, R1),
       Game6 = g:notify_state(Game5, N),

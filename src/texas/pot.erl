@@ -1,7 +1,7 @@
 -module(pot).
 
 -export([new/0, reset/1, new_stage/1,
-         add/4, pots/1, total/1]).
+         add/4, pots/1, total/1, total_player_bet/2]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -42,14 +42,11 @@ reset(Pot)
 
 new_stage(Pot)
   when is_record(Pot, pot) ->
-	CurrentPot = Pot#pot.current,
     Inactive = Pot#pot.inactive 
-        ++ Pot#pot.active
-        ++ [CurrentPot],
+        ++ Pot#pot.active,
     Pot#pot { 
       active = [], 
-      inactive = Inactive, 
-      current = new_side_pot()
+      inactive = Inactive
      }.
 
 pots(Pot)
@@ -138,8 +135,7 @@ add_bet(Pot, Player, Amount, IsAllIn) when is_record(Pot, pot) ->
     if
 		Unallocated == 0 ->
 			Pot2 = Pot1,
-			Rest = 0,
-			IsAllIn = true; % Assertion: IsAllIn have to be true;
+			Rest = 0;
         IsAllIn ->
             %% split the pot
             Pot2 = split_current(Pot1, Player, Unallocated),
@@ -168,11 +164,7 @@ side_pots(Pot) ->
 
 sort_pots(SidePots) ->
     Sort = fun(S1,S2) ->
-			if 
-				S1#side_pot.all_in == 0 -> true;
-				S2#side_pot.all_in == 0 -> false;
-				true -> gb_trees:size(S1#side_pot.members) >= gb_trees:size(S2#side_pot.members)
-			end
+				gb_trees:size(S1#side_pot.members) >= gb_trees:size(S2#side_pot.members)
 	end,
 	lists:sort(Sort, SidePots).
 
@@ -185,6 +177,17 @@ total(Pot) when is_record(Pot, pot) ->
                 Acc + total(X)
         end,
     lists:foldl(F, 0, side_pots(Pot)).
+
+total_player_bet(Pot, Player) when is_record(Pot, pot) ->
+    F = fun(X, Acc) -> 
+                Acc + bet_amount(X,Player)
+        end,
+    lists:foldl(F, 0, [Pot#pot.current | Pot#pot.active]).
+
+
+bet_amount(SidePot,Player) ->
+	{_, Amount} = make_member(SidePot, Player),
+	Amount.
 
 %% Split the pot. Last bet for this player plus
 %% the current bet becomes the all-in amount.
@@ -220,7 +223,7 @@ split(SidePot, Player, Amount, AllIn)  when is_record(SidePot, side_pot)  ->
     Members2 = lists:map(fun({Key, Value}) -> 
                                  if 
                                      Value > Bet -> {Key, Bet};
-                                     true -> {Key, Value}
+                                     true -> {Key, Value}  % Someone already folds, just add amount into pot
                                  end
                          end, List),
     OldPot = SidePot1#side_pot { 
@@ -478,6 +481,33 @@ all_in_example12_test() ->
     ?assertEqual(true, is_member(Side2, 'B')),
     ?assertEqual(true, is_member(Side2, 'D')),
     ?assertEqual(false, is_member(Side2, 'C')).
+
+folding_main_pot_test() ->
+	Pot = new(),
+    { Pot1, 0 } = add_bet(Pot, 'A', 10),
+    { Pot2, 0 } = add_bet(Pot1, 'B', 10),
+    { Pot3, 0 } = add_bet(Pot2, 'C', 10),
+    { Pot4, 0 } = add_bet(Pot3, 'A', 5),
+    { Pot5, 0 } = add_bet(Pot4, 'C', 3, true),
+	
+    Side = lists:last(Pot5#pot.active),
+    ?assertEqual(36, total(Side)),
+	
+    ?assertEqual(true, is_member(Side, 'A')),
+    ?assertEqual(13, bet_amount(Side,'A')),
+
+	?assertEqual(true, is_member(Side, 'B')),
+    ?assertEqual(10, bet_amount(Side,'B')),
+	
+    ?assertEqual(true, is_member(Side, 'C')),
+    ?assertEqual(13, bet_amount(Side,'C')),
+	
+	Side2 = Pot5#pot.current,
+    ?assertEqual(2, total(Side2)),
+    ?assertEqual(true, is_member(Side2, 'A')),
+    ?assertEqual(false, is_member(Side2, 'B')),
+    ?assertEqual(false, is_member(Side2, 'C')).
+	
 
 multiple_all_in_with_same_amount_test() ->
     Pot = new(),

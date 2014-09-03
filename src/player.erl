@@ -271,6 +271,7 @@ is_record(R, notify_sb);
 is_record(R, notify_game_detail);
 is_record(R, limit);
 is_record(R, notify_seat_detail);
+is_record(R, notify_pot);
 is_record(R, notify_bb) ->
   forward_to_client(R, Data),
   {noreply, Data};

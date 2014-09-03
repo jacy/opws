@@ -347,7 +347,8 @@
 					game,
 					player,
 					raise,
-					call
+					call,
+					allin
 				 }).
 
 -define(CMD_NOTIFY_BLIND, 85).
@@ -399,7 +400,15 @@
     state,
     player,
     inplay,
-    nick
+    nick,
+	bet
+  }).
+
+-define(CMD_NOTIFY_POT, 201).
+
+-record(notify_pot, {
+    id, 
+    amount
   }).
 
 -define(CMD_NOTIFY_GAME_DETAIL, 81).

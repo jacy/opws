@@ -16,7 +16,7 @@
          pot_size/1, draw/3, draw_shared/2, 
          inplay_plus/3, show_cards/2, rank_hands/1, 
          pots/1, make/1, make/3, watch/3, unwatch/2,
-         notify_state/2,broadcast_player_state/1
+         notify_state/2,broadcast_player_state/1,notify_pot/2
         ]).
 
 -include("texas.hrl").
@@ -143,7 +143,8 @@ notify_player_state(Player, Game) ->
           state = S#seat_state.state,
           player = S#seat_state.player,
           inplay = S#seat_state.inplay,
-          nick = Nick
+          nick = Nick,
+		  bet = pot:total_player_bet(Game#game.pot, Pid)
         })
     end,
     lists:foreach(F, L).
@@ -257,13 +258,6 @@ unwatch(Game, R) ->
 watch(Game, Ctx, R) ->
   Players = get_seats(Game, ?PS_ANY),
 
-  case Ctx#texas.stage of
-    	?GS_CANCEL -> ok ;
-    _ ->
-		  % Notify Game Shared Card
-		  notify_shared(lists:reverse(Game#game.board), Game, R#watch.player)
-  end,
-  
   Detail = #notify_game_detail{
     game = Game#game.gid, 
     pot = pot:total(Game#game.pot),
@@ -278,6 +272,15 @@ watch(Game, Ctx, R) ->
 
   gen_server:cast(R#watch.player, Detail),
   notify_player_state(R#watch.player, Game),
+  
+  if Ctx#texas.stage < ?GS_FLOP 
+						-> ok ;
+    true ->
+		  % Notify Game Shared Card
+		  notify_shared(lists:reverse(Game#game.board), Game, R#watch.player),
+		  notify_pot(Game#game.pot,R#watch.player)
+  end,
+  
   if Ctx#texas.stage band ?GS_BETTING > 0 ->
 		 gen_server:cast(R#watch.player,#notify_actor{ game = Game#game.gid, seat = Ctx#texas.exp_seat}); % Show timer
 	 true -> 
@@ -506,6 +509,13 @@ set_state(Game, SeatNum, State)
       nick = gen_server:call(Seat#seat.player, 'NICK QUERY')
      },
     broadcast(Game1, Event).
+
+notify_pot(Pot, Player) ->
+ Pots = pot:pots(Pot),
+ F = fun({Amount,_,PotId}) ->
+	 	 gen_server:cast(Player, #notify_pot{amount=Amount,id=PotId})
+ end,
+ lists:foreach(F, Pots).
 
 notify_state(Game, Player)
   when is_pid(Player) ->

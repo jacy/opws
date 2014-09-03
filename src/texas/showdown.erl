@@ -4,7 +4,7 @@
 
 -include("texas.hrl").
 -include_lib("eunit/include/eunit.hrl").
--define(COMMISSION,0.02).
+-define(COMMISSION,0.00).
 -define(DELAY_UNIT,2000).
 
 start(Game, Ctx, []) ->
@@ -29,7 +29,11 @@ start(Game, Ctx, []) ->
   end,
   ?LOG([{delay, Delay}]),
   Ctx1 = Ctx#texas{ winners = Winners,stage=?GS_SHOWDOWN,win_duration=Delay },
-  {stop, Game2, Ctx1}.
+  
+  Event = #game_stage{ game = Game2#game.gid, stage = Ctx1#texas.stage, pot = pot:total(Game#game.pot)},
+  Game3 = g:broadcast(Game2, Event),
+  
+  {stop, Game3, Ctx1}.
 
 %%%
 %%% Utility

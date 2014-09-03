@@ -313,7 +313,8 @@ notify_raise() ->
              game(),
              player(),
              raise_amount(),
-             call_amount()
+             call_amount(),
+			 int()
             }).
 
 notify_blind() ->
@@ -641,7 +642,8 @@ notify_seat_detail() ->
              state(),
              player(),
              amount(),
-             nick()
+             nick(),
+			 amount()
            }).
 
 notify_game_detail() ->
@@ -655,6 +657,12 @@ notify_game_detail() ->
       price(),
       price(),
       price()
+    }).
+
+notify_pot() ->
+  record(notify_pot, {
+      int(),
+      amount()
     }).
 
 tourney_query() ->
@@ -870,6 +878,9 @@ write(R) when is_record(R, notify_seat_detail) ->
 
 write(R) when is_record(R, notify_game_detail) ->
   [?CMD_NOTIFY_GAME_DETAIL | pickle(notify_game_detail(), R)];
+
+write(R) when is_record(R, notify_pot) ->
+  [?CMD_NOTIFY_POT | pickle(notify_pot(), R)];
 
 write(R) when is_record(R, ping) ->
     [?CMD_PING|pickle(ping(), R)];

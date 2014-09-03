@@ -128,7 +128,7 @@ fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Result = Mod:start(Exch1#exch.data, Ctx, Params),
 	case Event of
 		{timeout,_,_} -> ok;
-		_ -> io:format("Fsm init Mod=~w, Result=~w ~n",[Mod,Result])
+		_ -> io:format("	Fsm init Mod=~w, Result=~w ~n",[Mod,Result])
 	end,
     advance(Exch1, Event, Result).
 
@@ -155,7 +155,6 @@ advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
 advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
     %% this module is done
     Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = T },
-	io:format("Stop Current Mod, Exch=~w ~n",[Exch]),
     fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, Event, {repeat, Data, _}) ->
