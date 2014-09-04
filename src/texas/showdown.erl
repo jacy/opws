@@ -5,36 +5,33 @@
 -include("texas.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -define(COMMISSION,0.00).
--define(DELAY_UNIT,1500).
+-define(DELAY_UNIT,2000).
 
 start(Game, Ctx, []) ->
-  g:show_cards(Game, Ctx#texas.b),
+  Ctx1 = Ctx#texas{stage=?GS_SHOWDOWN},
+  Game1 = g:new_stage(Game),
+  Game2 = g:broadcast(Game1, #game_stage{ game = Game1#game.gid, stage = Ctx1#texas.stage}),
+  g:show_cards(Game2, Ctx1#texas.b),
 
-  Ranks = g:rank_hands(Game),
-  notify_hands(Game, Ranks),
+  Ranks = g:rank_hands(Game2),
+  notify_hands(Game2, Ranks),
 
-  Pots = g:pots(Game),
+  Pots = g:pots(Game2),
   Winners = hand:winners(Ranks, Pots),
   
   ?LOG([{winners, Winners}]),
-  Game1 = notify_winners(Game, Winners),
+  Game3 = notify_winners(Game2, Winners),
 
   %% TODO 将所有金额不足的玩家重新设置状态
-  {_, Big} = (Game1#game.limit):blinds(Game1#game.low, Game1#game.high),
-  Game2 = check_inplay(g:get_seats(Game, ?PS_ANY), Big, Game1),
+  {_, Big} = (Game3#game.limit):blinds(Game3#game.low, Game3#game.high),
+  Game4 = check_inplay(g:get_seats(Game, ?PS_ANY), Big, Game3),
 
   WinDelay = length(Winners)  * ?DELAY_UNIT,
-  Delay = case Ctx#texas.stage of
+  Delay = case Ctx1#texas.stage of
 	  ?GS_RIVER -> ?DELAY_UNIT + WinDelay;
 	  _ -> WinDelay
   end,
-  ?LOG([{delay, Delay}]),
-  Ctx1 = Ctx#texas{ winners = Winners,stage=?GS_SHOWDOWN,win_duration=Delay },
-  
-  Event = #game_stage{ game = Game2#game.gid, stage = Ctx1#texas.stage, pot = pot:total(Game#game.pot)},
-  Game3 = g:broadcast(Game2, Event),
-  
-  {stop, Game3, Ctx1}.
+  {stop, Game4, Ctx1#texas{win_duration=Delay} }.
 
 %%%
 %%% Utility

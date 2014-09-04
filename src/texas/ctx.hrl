@@ -21,7 +21,6 @@
 					stage,                          %% current stage
 					deal_type,                      %% current private or share
 					deal_count,                      
-					winners = none,                 %% last winners
           			headsup = false,
 				    win_duration  % Delay time to show winners.
 				 }).

@@ -549,8 +549,7 @@ muck() ->
 game_stage() ->
     record(game_stage, {
              game(),
-             stage(),
-			 amount()
+             stage()
             }).
 
 seat_state() ->

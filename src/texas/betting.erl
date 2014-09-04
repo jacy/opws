@@ -31,8 +31,7 @@ start(Game, Ctx, [MaxRaises, Stage, HaveBlinds]) ->
     true ->
       Event = #game_stage{ 
         game = Game#game.gid, 
-        stage = Ctx2#texas.stage,
-		pot = pot:total(Game#game.pot)
+        stage = Ctx2#texas.stage
       },
       Game1 = g:broadcast(Game, Event),
       if 

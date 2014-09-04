@@ -144,7 +144,7 @@ notify_player_state(Player, Game) ->
           player = S#seat_state.player,
           inplay = S#seat_state.inplay,
           nick = Nick,
-		  bet = pot:total_player_bet(Game#game.pot, Pid)
+		  bet = pot:player_pending(Game#game.pot, Pid)
         })
     end,
     lists:foreach(F, L).
@@ -642,7 +642,7 @@ add_bet(Game, SeatNum, Amount) ->
                     AllIn = false,
                     Game1 = Game
             end,
-            Pot = pot:add(Game1#game.pot, Player, Amount, AllIn),
+            Pot = pot:pend(Game1#game.pot, Player, Amount, AllIn),
             Game1#game {
               pot = Pot,
               seats = setelement(SeatNum,
