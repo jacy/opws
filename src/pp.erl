@@ -648,7 +648,6 @@ notify_seat_detail() ->
 notify_game_detail() ->
   record(notify_game_detail, {
       game(),
-      amount(),
       seats(),
       players(),
       stage(),

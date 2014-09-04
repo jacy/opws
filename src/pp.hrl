@@ -414,7 +414,6 @@
 
 -record(notify_game_detail, {
     game,
-    pot,
     players,
     seats,
     stage,

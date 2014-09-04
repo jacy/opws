@@ -260,7 +260,6 @@ watch(Game, Ctx, R) ->
 
   Detail = #notify_game_detail{
     game = Game#game.gid, 
-    pot = pot:total(Game#game.pot),
     players = length(Players),
     seats = size(Game#game.seats),
     stage = Ctx#texas.stage,
