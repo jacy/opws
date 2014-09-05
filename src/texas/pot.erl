@@ -495,6 +495,20 @@ all_in_example12_test() ->
     ?assertEqual(true, is_member(Side2, 'D')),
     ?assertEqual(false, is_member(Side2, 'C')).
 
+all_in_example13_test() ->
+    Pot = new(),
+    { Pot1, 0 } = add_bet(Pot, 'A', 10,true),
+    { Pot2, 0 } = add_bet(Pot1, 'B', 10,false),
+	
+    Side = lists:last(Pot2#pot.active),
+    ?assertEqual(20, total(Side)),
+    ?assertEqual(true, is_member(Side, 'A')),
+    ?assertEqual(true, is_member(Side, 'B')),
+    Side2 = Pot2#pot.current,
+    ?assertEqual(0, total(Side2)),
+    ?assertEqual(false, is_member(Side2, 'A')),
+    ?assertEqual(false, is_member(Side2, 'B')).
+
 folding_main_pot_test() ->
 	Pot = new(),
     { Pot1, 0 } = add_bet(Pot, 'A', 10),
