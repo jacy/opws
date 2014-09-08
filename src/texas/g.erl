@@ -30,7 +30,7 @@ make(R = #start_game{}) ->
     %% and blinds position for texas hold'em.
     Mods = case R#start_game.type of
                ?GT_TEXAS_HOLDEM ->
-                   texas_holdem_mods(R#start_game.start_delay) 
+                   texas_holdem_mods() 
            end,
     make(R, #texas{}, Mods).
 
@@ -919,7 +919,7 @@ core_texas_mods() ->
      {delay, []} % delay according to winner counts
     ].
      
-texas_holdem_mods(StartDelay) ->
-    [ {wait_players, [StartDelay]} ] 
+texas_holdem_mods() ->
+    [ {wait_players, []} ] 
         ++ core_texas_mods() 
         ++ [ {restart, []} ].

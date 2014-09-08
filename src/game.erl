@@ -33,6 +33,7 @@ start([GID, R = #start_game{}]) ->
       seats = g:create_seats(R#start_game.seat_count),
       required_player_count = R#start_game.required,
       timeout = R#start_game.player_timeout,
+	  start_delay = R#start_game.start_delay,
       tourney = none
      },
     {Game, R}.

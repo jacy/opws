@@ -27,8 +27,8 @@
 					limit,
 					low,
 					high,
-          min,
-          max,
+          			min,
+          			max,
 					ante,
 					%% card deck
 					deck, 
@@ -38,9 +38,8 @@
 					pot,
 					%% game observers
 					observers = [], 
-					%% time given to players 
-					%% to make a move
-					timeout = ?PLAYER_TIMEOUT,
+					timeout, % player timeout
+					start_delay, % time to wait players
 					%% number of raises so far
 					raise_count = 0,
 					%% players required to start a game

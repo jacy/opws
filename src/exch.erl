@@ -157,11 +157,6 @@ advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
     Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = T },
     fsm_init(Exch1, Event);
 
-advance(Exch = #exch{}, Event, {repeat, Data, _}) ->
-    %% repeat this module 
-    Exch1 = Exch#exch{ data = Data, ctx = Exch#exch.orig_ctx },
-    fsm_init(Exch1, Event);
-
 advance(Exch = #exch{}, _, {continue, Data, Ctx}) ->
     %% continue processing in this state
     {noreply, Exch#exch{ data = Data, ctx = Ctx }};

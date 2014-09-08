@@ -5,8 +5,8 @@
 -include("texas.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
-start(Game, Ctx, [Delay]) ->
-  Game1 = g:restart_timer(Game, Delay),
+start(Game, Ctx, []) ->
+  Game1 = g:restart_timer(Game, Game#game.start_delay),
   %% reset call amount
   Ctx1 = Ctx#texas{ call = 0, stage=?GS_CANCEL },
   {next, wait_for_players, Game1, Ctx1}.
@@ -20,7 +20,8 @@ wait_for_players(Game, Ctx, {timeout, _, _}) ->
             Game1 = g:notify_start_game(Game),
             {stop, Game1, Ctx#texas{stage=?GS_GAME_START}};
         true ->
-            {repeat, Game, Ctx}
+             Game1 = g:restart_timer(Game, Game#game.start_delay),
+			  {continue, Game1, Ctx}
   end;
 
 wait_for_players(Game, Ctx, R = #join{}) ->
