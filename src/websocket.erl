@@ -26,11 +26,11 @@ decoding_data(<<_Fin:1, _Rsv:3, _Opcode:4, _Mask:1, _Size:7, MaskKey:32, Msg/bin
   unmask_data(binary_to_list(Msg), <<MaskKey:32>>, 4, []).
 
 coding_data(Bin, Size) when Size =< 125 ->
-  %%       FIN  RSV  OPCODE  MASK  SIZE    DATA
+  %%FIN  RSV  OPCODE  MASK  SIZE    DATA
   <<1:1, 0:3, 1:4,    0:1,  Size:7, Bin/binary>>;
 
 coding_data(Bin, Size) ->
-  %%       FIN  RSV  OPCODE  MASK  SIZE            DATA
+  %%FIN  RSV  OPCODE  MASK  SIZE            DATA
   <<1:1, 0:3, 1:4,    0:1,  126:7, Size:16, Bin/binary>>.
 
 unmask_data([], _MaskKey, _Index, Result) ->

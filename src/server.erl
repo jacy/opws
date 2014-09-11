@@ -8,7 +8,7 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([debug/0, start/1, start/2, start/3, stop/1, test/0]).
+-export([prepare_data/0, debug/0, start/1, start/2, start/3, stop/1, sync_data/1]).
 
 -include("common.hrl").
 -include("pp.hrl").
@@ -25,12 +25,24 @@
           player = none
          }).
 
-debug() ->
+prepare_data() ->
 	schema:install(),
-	start(['8002','192.168.1.10']),
 	player:create(<<"jacy">>,<<"jacy">>,<<"JacyHong">>,<<"location_SG">>,10000),
 	player:create(<<"lena">>,<<"lena">>,<<"Lena">>,<<"location_SG">>,10000),
 	player:create(<<"hanhan">>,<<"hanhan">>,<<"HanHan">>,<<"location_SG">>,10000).
+
+
+debug() ->
+	start(['8002','192.168.1.10']).
+
+%% Only need to sync once at the first deploy, restart will auto sync.
+sync_data(MasterNode) ->
+	db:start(),
+	mnesia:change_config(extra_db_nodes, [MasterNode]),
+    mnesia:change_table_copy_type(schema, node(), disc_copies),
+    Tabs = mnesia:system_info(tables) -- [schema],
+    [mnesia:add_table_copy(Tab,node(), disc_copies) || Tab <- Tabs].
+	
 
 start([Port, Host])
   when is_atom(Port),
@@ -256,7 +268,7 @@ parse_packet(Socket, {socket, Packet}, Client) ->
   end,
 
   Client1 = case Data of 
-    {'EXIT', Error} ->
+    {'EXIT', _Error} ->
       Client;
     #login{ usr = Usr, pass = Pass} ->
       process_login(Client, Socket, Usr, Pass);
@@ -347,14 +359,3 @@ start_test_game(R) ->
     {ok, Game} = game:start(R),
     GID = game:call(Game, 'ID'),
     #your_game{ game = GID }.
-
-%% }}}
-
-%% 
-%% Test suite
-%%
-
-test() ->
-    ok.
-
-%% vim: fdm=marker

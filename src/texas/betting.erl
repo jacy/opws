@@ -160,6 +160,14 @@ betting(Game, Ctx, {timeout, _, _}) ->
   %Seat = Ctx#texas.exp_seat,
   betting(Game1, Ctx, #fold{ player = Player });
 
+
+% When Tournament is started,it is not allowed to be joind
+betting(Game, Ctx, R)  
+  	when is_record(R, join), Game#game.tourney /= none;
+	is_record(R, sit_out), Game#game.tourney /= none;
+	is_record(R, come_back), Game#game.tourney /= none ->
+    {skip, Game, Ctx};
+
 %% Join
 betting(Game, Ctx, R = #join{}) ->
   Game1 = g:join(Game, R#join{ state = ?PS_FOLD }),

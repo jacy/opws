@@ -7,6 +7,5 @@ erl_crash.dump
 /ebin
 /.settings/
 /*.project
-/Mnesia.jacy@localhost/
-/Mnesia.ujacy@ujacy/
-/Mnesia.jacy@ujacy/
+/Mnesia.*/
+*.dat

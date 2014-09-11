@@ -24,8 +24,7 @@
           modules, % original modules, not changing it so can reset the stacks 
           stack, % real time modules info, when modules finished, got removed
           state, % state of current module
-          ctx,
-          orig_ctx
+          ctx
          }).
 
 behaviour_info(callbacks) ->
@@ -70,8 +69,7 @@ init(Args = [Parent|_]) ->
       data = Data,
       modules = Modules,
       stack = Modules,
-      ctx = Context,
-      orig_ctx = Context
+      ctx = Context
      },
     case fsm_init(Exch, Start) of
         {stop, _, Exch1} ->
@@ -124,7 +122,7 @@ process_cast(Event, Exch) ->
 
 fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Ctx = Exch#exch.ctx,
-    Exch1 = Exch#exch{ orig_ctx = Ctx, state = none },
+    Exch1 = Exch#exch{state = none },
     Result = Mod:start(Exch1#exch.data, Ctx, Params),
 	case Event of
 		{timeout,_,_} -> ok;
@@ -137,10 +135,7 @@ advance(Exch = #exch{}, _, {next, State, Data, Ctx}) ->
     {noreply, Exch#exch{ state = State, data = Data, ctx = Ctx }};
 
 advance(Exch = #exch{}, Event, {skip, Data, Ctx}) ->
-  case Cbk:cast(Event, Ctx, Data) of % try to handle event in common
-    {NewGame, NewCtx} -> {noreply, Exch#exch{ data = NewGame, ctx = NewCtx }};
-    _ -> {noreply, Exch}
-  end;
+  {noreply, Exch#exch{ data = Cbk:cast(Event, Ctx, Data)}};
 
 advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
     %% game over

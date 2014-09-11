@@ -58,7 +58,8 @@ dispatch({'SET STATE', Player, State}, Game) ->
     change_state(Game, Player, State);
 
 dispatch(R, Game) ->
-  ?LOG([{unknown_dispatch, {msg, R}, {game, Game}}]).
+  ?LOG([{unknown_dispatch, {msg, R}, {game, Game}}]),
+  Game.
     
 call('ID', Game) ->
   Game#game.gid;
@@ -83,7 +84,7 @@ call({'INPLAY', Player}, Game) ->
 call('DEBUG', Game) ->
   Game.
 
-cast({timeout, _, {out, SeatNum, PID}}, Ctx, Game) ->
+cast({timeout, _, {out, SeatNum, PID}}, _Ctx, Game) ->
   Seat = element(SeatNum, Game#game.seats),
   case Seat#seat.pid of
     PID ->
@@ -92,20 +93,19 @@ cast({timeout, _, {out, SeatNum, PID}}, Ctx, Game) ->
     _ ->
       ok
   end,
-  {Game, Ctx};
+  Game;
 
 
 cast(R = #watch{}, Ctx, Game) ->
-  Game1 = g:watch(Game, Ctx, R),
-  {Game1, Ctx};
+  g:watch(Game, Ctx, R);
 
-cast(R = #unwatch{}, Ctx, Game) ->
+cast(R = #unwatch{}, _Ctx, Game) ->
   ?LOG([{game_unwatch, R}]),
-  Game1 = g:unwatch(Game, R),
-  {Game1, Ctx};
+ g:unwatch(Game, R);
 
-cast(_, _, _) ->
-  skip.
+cast(R, _Ctx, Game) ->
+   ?LOG([{unknown_dispatch, {msg, R}, {game, Game}}]),
+  Game.
 
 %%%
 %%% Utility
