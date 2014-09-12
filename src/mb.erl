@@ -324,7 +324,8 @@ next_port(Host, [Pid|Rest], Max) ->
 start_game(G, Delay, Barrier)
   when is_record(G, irc_game) ->
     Cmd = #start_game{
-      table_name = <<"test game">>,
+      id=g:uuid(),
+	  table_name = <<"test games">>,
       type = ?GT_IRC_TEXAS,
       limit = #limit{ type = ?LT_FIXED_LIMIT, high = 20, low = 10 },
       seat_count = G#irc_game.player_count,

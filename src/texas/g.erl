@@ -9,14 +9,14 @@
          notify_start_game/1, notify_cancel_game/1,
          join/2, leave/2, kick/1, set_state/3,
          get_seat/2, find/8, seat_query/1, 
-         setup/6, create_seats/1,
+         setup/8, create_seats/1,
          request_bet/5, process_autoplay/2,
          cancel_timer/1, restart_timer/2, 
          add_bet/3, new_stage/1, reset_player_state/3,
          pot_size/1, draw/3, draw_shared/2, 
          inplay_plus/3, show_cards/2, rank_hands/1, 
          pots/1, make/1, make/3, watch/3, unwatch/2,
-         notify_state/2,broadcast_player_state/1,notify_pot/2
+         notify_state/2,broadcast_player_state/1,notify_pot/2,uuid/0
         ]).
 
 -include("texas.hrl").
@@ -39,7 +39,7 @@ make(R = #start_game{}, none, none) ->
 
 make(R = #start_game{}, Ctx, Mods) ->
     Game = exch:new(game, Ctx, Mods),
-    Game:start(self(), [R]).
+    Game:start([R]).
 
 %%% Initialize seats
 
@@ -825,7 +825,7 @@ find(GameType, LimitType) ->
                       Waiting = 0, % not implemented
                       _ = #game_info{
                         game = GID,
-                        table_name = names:get_table_name(GID),
+                        table_name = R#tab_game_xref.table_name,
                         type = R#tab_game_xref.type,
                         limit = R#tab_game_xref.limit,
                         seat_count = R#tab_game_xref.seat_count,
@@ -854,17 +854,21 @@ seat_query(Game, SeatNum, Acc) ->
     Acc1 = [SeatState|Acc],
     seat_query(Game, SeatNum - 1, Acc1).
 
-setup(GameType, SeatCount, Limit, Delay, Timeout, Max) ->
+setup(Id, Code, Name, GameType, SeatCount, Limit, Delay, Timeout) ->
     Game = #tab_game_config {
-      id = erlang:phash2(now(), 1 bsl 32),
+      id = Id,
+	  code = Code,
+	  name=Name,
       type = GameType,
       seat_count = SeatCount,
       limit = Limit,
       start_delay = Delay,
-      player_timeout = Timeout,
-      max = Max
+      player_timeout = Timeout
      },
     ok = db:write(Game).
+
+uuid() ->
+	 erlang:phash2(now(), 1 bsl 32).
 
 credit_player(GID, PID, Amount) ->
     db:update_balance(tab_balance, PID, Amount),

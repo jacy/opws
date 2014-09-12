@@ -10,14 +10,14 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([start/2, stop/1, cast/2, call/2]).
+-export([start/1, stop/1, cast/2, call/2]).
 
 -include("common.hrl").
+-include("pp.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 
 -record(exch, {
-          parent,
           data, % #game{}
           note,
           %% fsm 
@@ -28,8 +28,7 @@
          }).
 
 behaviour_info(callbacks) ->
-    [{id, 0},     % generate id to link to pid
-     {start, 1},  % call on init
+    [{start, 1},  % call on init
      {stop, 1}, 
      {dispatch, 2},
      {call, 2},
@@ -39,9 +38,8 @@ behaviour_info(callbacks) ->
 %%% API
 %%%
 
-start(Parent, Args) ->
-    Id = Cbk:id(),
-    gen_server:start({global, {Cbk, Id}}, THIS, [Parent, Id|Args], []).
+start([R= #start_game{id=GID}]) ->
+    gen_server:start({global, {Cbk, GID}}, THIS, [R], []).
 
 stop(Pid)
   when is_pid(Pid) ->
@@ -61,11 +59,10 @@ call(Exch, Event) ->
 %%% Implementation
 %%%
 
-init(Args = [Parent|_]) ->
+init(Args) ->
     process_flag(trap_exit, true),
-    {Data, Start} = Cbk:start(tl(Args)),
+    {Data, Start} = Cbk:start(Args),
     Exch = #exch{
-      parent = Parent,
       data = Data,
       modules = Modules,
       stack = Modules,
@@ -136,16 +133,6 @@ advance(Exch = #exch{}, _, {next, State, Data, Ctx}) ->
 
 advance(Exch = #exch{}, Event, {skip, Data, Ctx}) ->
   {noreply, Exch#exch{ data = Cbk:cast(Event, Ctx, Data)}};
-
-advance(Exch = #exch{ stack = [_] }, _, {stop, Data, Ctx}) ->
-    %% game over
-    if
-        is_pid(Exch#exch.parent) ->
-            Exch#exch.parent ! {'EXCH EXIT', self(), Ctx};
-        true ->
-            ok
-    end,
-    {stop, normal, Exch#exch{ data = Data, stack = [] }};
 
 advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
     %% this module is done

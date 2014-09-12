@@ -14,7 +14,7 @@
 id() ->
   counter:bump(game).
 
-start([GID, R = #start_game{}]) ->
+start([R = #start_game{id = GID}]) ->
     store_game_info(GID, R),
     Game = #game {
       gid = GID,

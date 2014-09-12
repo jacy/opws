@@ -1,18 +1,14 @@
--module(server).
+-module(lobby).
 -behaviour(gen_server).
 
-%%% 
-%%% OpenPoker server instance
-%%%
 
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([prepare_data/0, debug/0, start/1, start/2, start/3, stop/1, sync_data/1]).
+-export([start/1, start/2, start/3, stop/1]).
 
 -include("common.hrl").
 -include("pp.hrl").
--include("schema.hrl").
 
 -record(server, {
           port,
@@ -25,25 +21,6 @@
           player = none
          }).
 
-prepare_data() ->
-	schema:install(),
-	player:create(<<"jacy">>,<<"jacy">>,<<"JacyHong">>,<<"location_SG">>,10000),
-	player:create(<<"lena">>,<<"lena">>,<<"Lena">>,<<"location_SG">>,10000),
-	player:create(<<"hanhan">>,<<"hanhan">>,<<"HanHan">>,<<"location_SG">>,10000).
-
-
-debug() ->
-	start(['8002','192.168.1.10']).
-
-%% Only need to sync once at the first deploy, restart will auto sync.
-sync_data(MasterNode) ->
-	db:start(),
-	mnesia:change_config(extra_db_nodes, [MasterNode]),
-    mnesia:change_table_copy_type(schema, node(), disc_copies),
-    Tabs = mnesia:system_info(tables) -- [schema],
-    [mnesia:add_table_copy(Tab,node(), disc_copies) || Tab <- Tabs].
-	
-
 start([Port, Host])
   when is_atom(Port),
        is_atom(Host) ->
@@ -55,35 +32,14 @@ start(Host, Port) ->
     start(Host, Port, false).
 
 start(Host, Port, TestMode) ->
-    db:start(),
-    case db:wait_for_tables([tab_game_config, tab_game_xref], 10000) of 
-        ok ->
-            case gen_server:start(server, [Host, Port, TestMode], []) of
-                {ok, Pid} ->
-                    %%io:format("server:start: pid ~w~n", [Pid]),
-                    pg2:create(?GAME_SERVERS),
-                    ok = pg2:join(?GAME_SERVERS, Pid),
-                    {ok, Pid};
-                Result ->
-                    error_logger:error_report(
-                      [{module, ?MODULE},
-                       {line, ?LINE},
-                       {message, "Unexpected result"},
-                       {call, 'gen_server:start(server)'}, 
-                       {result, Result},
-                       {port, Port},
-                       {now, now()}]),
-                    Result
-            end;
-        Other ->
-            error_logger:error_report(
-              [{module, ?MODULE},
-               {line, ?LINE},
-               {message, "Unexpected result"},
-               {result, Other},
-               {call, 'db:wait_for_tables'}, 
-               {now, now()}]),
-            Other
+    case gen_server:start(lobby, [Host, Port, TestMode], []) of
+        {ok, Pid} ->
+            pg2:create(?GAME_SERVERS),
+            ok = pg2:join(?GAME_SERVERS, Pid),
+            {ok, Pid};
+        Result ->
+			?ERROR([{start_lobby_faild, {unknow_result, Result}}]),
+            Result
     end.
 
 init([Host, Port, TestMode]) -> %% {{{ gen_server callback
@@ -91,19 +47,12 @@ init([Host, Port, TestMode]) -> %% {{{ gen_server callback
     %%error_logger:logfile({open, "/tmp/" 
     %%      ++ atom_to_list(node()) 
     %%      ++ ".log"}),
-    Client = #client{ server = self() },
-    if
-        not TestMode ->
-            start_games();
-        true ->
-            ok
-    end,
     F = fun(Socket, Packet, LoopData) -> 
         case LoopData of
           none ->
-            parse_packet(Socket, Packet, Client);
-          {loop_data, Client1} ->
-            parse_packet(Socket, Packet, Client1)
+            parse_packet(Socket, Packet, #client{ server = self()});
+          {loop_data, Client} ->
+            parse_packet(Socket, Packet, Client)
         end
     end, 
     mochiweb_websocket:stop(Port),
@@ -119,7 +68,6 @@ stop(Server) ->
     gen_server:cast(Server, stop).
 
 terminate(normal, Server) ->
-    kill_games(),
     mochiweb_websocket:stop(Server#server.port),
     ok.
 
@@ -141,23 +89,12 @@ handle_cast(stop, Server) ->
     {stop, normal, Server};
 
 handle_cast(Event, Server) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {message, Event}]),
+    ?LOG([{handle_cast, {message, Event}}]),
     {noreply, Server}.
 
 
 handle_call('WHERE', _From, Server) ->
     {reply, {Server#server.host, Server#server.port}, Server};
-%%     {ok, [{X, _, _}|_]} = inet:getif(),
-%%     io:format("Server address: ~w~n", [X]),
-%%     Host = io_lib:format("~.B.~.B.~.B.~.B", 
-%%       [element(1, X),
-%%        element(2, X),
-%%        element(3, X),
-%%        element(4, X)]),
-%%     {reply, {Host, Server#server.port}, Server};
 
 handle_call('USER COUNT', _From, Server) ->
     Children = tcp_server:children(Server#server.port),
@@ -167,11 +104,7 @@ handle_call('TEST MODE', _From, Server) ->
     {reply, Server#server.test_mode, Server};
 
 handle_call(Event, From, Server) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {message, Event}, 
-                              {from, From}]),
+    ?LOG([{handle_call, {from, From}, {message, Event}}]),
     {noreply, Server}.
 
 handle_info({'EXIT', Pid, Reason}, Server) ->
@@ -179,16 +112,13 @@ handle_info({'EXIT', Pid, Reason}, Server) ->
   {noreply, Server};
 
 handle_info(Info, Server) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {message, Info}]),
+    ?LOG([{handle_info, Info}]),
     {noreply, Server}.
 
 code_change(_OldVsn, Server, _Extra) ->
   {ok, Server}. %% }}}
 
-process_login(Client, Socket, Usr, Pass) -> %% {{{ socket connection processer
+process_login(Client, Socket, Usr, Pass) ->
   case login:login(Usr, Pass, self()) of
     {error, Error} ->
       ok = ?tcpsend(Socket, #bad{ cmd = ?CMD_LOGIN, error = Error}),
@@ -291,15 +221,6 @@ parse_packet(_Socket, Event, Client) ->
   ?LOG([{parse_packet, {event, Event}}]),
   {loop_data, Client}.
 
-
-%%%
-%%% Handlers
-%%%
-
-%%%
-%%% Utility
-%%% {{{ 
-
 send_games(_, [], _) ->
     ok;
 
@@ -319,41 +240,6 @@ find_games(Socket,
                          WaitOp, Waiting),
     
     send_games(Socket, L, lists:flatlength(L)).
-
-start_games() ->
-    {atomic, Games} = db:find(tab_game_config),
-    start_games(Games).
-
-start_games([]) ->
-    ok;
-
-start_games([Game|Rest]) ->
-    start_games(Game, Game#tab_game_config.max),
-    start_games(Rest).
-
-start_games(_Game, 0) ->
-    ok;
-
-start_games(Game, N) ->
-    g:make(_ = #start_game{ 
-             type = Game#tab_game_config.type, 
-             limit = Game#tab_game_config.limit, 
-             start_delay = Game#tab_game_config.start_delay,
-             player_timeout = Game#tab_game_config.player_timeout,
-             seat_count = Game#tab_game_config.seat_count
-            }),
-    start_games(Game, N - 1).
-
-kill_games() ->
-    {atomic, Games} = db:find(tab_game_xref),
-    kill_games(Games).
-
-kill_games([]) ->
-    ok;
-
-kill_games([H|T]) ->
-    gen_server:cast(H#tab_game_xref.process, stop),
-    kill_games(T).
 
 start_test_game(R) ->
     {ok, Game} = game:start(R),

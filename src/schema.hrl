@@ -58,12 +58,13 @@
 
 -record(tab_game_config, {
 					id,
+					code,
+					name,
 					type,
 					seat_count,
 					limit,
 					start_delay,
-					player_timeout,
-					max
+					player_timeout
 				 }).
 
 -record(tab_cluster_config, {

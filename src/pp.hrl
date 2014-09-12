@@ -134,13 +134,14 @@
 -define(CMD_START_GAME, 17).
 
 -record(start_game, {
-					table_name = <<"test game">>,
+					id,
+					table_name,
 					type,
 					limit,
 					seat_count,
 					required = 2,
-					start_delay = ?START_DELAY,
-					player_timeout = ?PLAYER_TIMEOUT,
+					start_delay,
+					player_timeout,
 					rigged_deck = [],
 					barrier
 				 }).

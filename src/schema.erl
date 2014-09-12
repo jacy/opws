@@ -124,36 +124,10 @@ install_counter(Nodes) ->
                              {attributes, record_info(fields, tab_counter)}
                             ]).
 
-populate(_) ->
-    g:setup(?GT_IRC_TEXAS, 20, 
-            #limit{ type = ?LT_FIXED_LIMIT, low = 10, high = 20}, 
-            ?START_DELAY, ?PLAYER_TIMEOUT,
-            10),
-    g:setup(?GT_TEXAS_HOLDEM, 10, 
-            #limit{ type = ?LT_FIXED_LIMIT, low = 10, high = 20}, 
-            ?START_DELAY, ?PLAYER_TIMEOUT,
-            50),
-    g:setup(?GT_TEXAS_HOLDEM, 10, 
-            #limit{ type = ?LT_NO_LIMIT, low = 10, high = 20}, 
-            ?START_DELAY, ?PLAYER_TIMEOUT,
-            50),
-    g:setup(?GT_TEXAS_HOLDEM, 10, 
-            #limit{ type = ?LT_POT_LIMIT, low = 10, high = 20}, 
-            ?START_DELAY, ?PLAYER_TIMEOUT,
-            50).
-
 populate() ->
-  %g:setup(?GT_TEXAS_HOLDEM, 9, 
-          %#limit{ type = ?LT_NO_LIMIT, low = 10, high = 20 },
-          %?START_DELAY, ?PLAYER_TIMEOUT, 
-          %8),
-  g:setup(?GT_TEXAS_HOLDEM, 9,
+  g:setup(1, texas, <<"5paw6JGh5Lqs5aib5qiC5aC0">>, ?GT_TEXAS_HOLDEM, 9,
           #limit{ type = ?LT_NO_LIMIT, low = 5, high = 10, min = 100, max = 2000 },
-          ?START_DELAY, ?PLAYER_TIMEOUT, 1). 
-  %g:setup(?GT_TEXAS_HOLDEM, 9,
-          %#limit{ type = ?LT_NO_LIMIT, low = 10, high = 20 },
-          %5000, ?PLAYER_TIMEOUT * 100, 
-          %1).
+          ?START_DELAY, ?PLAYER_TIMEOUT). 
 
 reset_counters()->
     counter:reset(game),
