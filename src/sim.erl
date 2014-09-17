@@ -63,7 +63,7 @@ leave(PID) ->
 player_loop(PID) when PID == 2 ->
   receive
     {packet, {bet_req, _GID, Call, Min, Max}} ->
-      io:format("BET_REQ ~p [Raise: ~p - ~p Call: ~p] ~n", [PID, Min, Max, Call]);
+      ?FLOG("BET_REQ ~p [Raise: ~p - ~p Call: ~p] ~n", [PID, Min, Max, Call]);
     {call, Amount} ->
       call(PID, Amount);
     {fold} ->
@@ -78,15 +78,15 @@ player_loop(PID) when PID == 2 ->
 player_loop(PID) ->
   receive
     {packet, {notify_raise, _GID, Player, Raise, Call}} ->
-      io:format("NOTIFY_RAISE ~p [Raise: ~p Call ~p] ~n", [Player, Raise, Call]);
+      ?FLOG("NOTIFY_RAISE ~p [Raise: ~p Call ~p] ~n", [Player, Raise, Call]);
     {packet, {bet_req, _GID, Call, Min, Max}} ->
-      io:format("BET_REQ ~p [Raise: ~p - ~p Call: ~p] ~n", [PID, Min, Max, Call]);
+      ?FLOG("BET_REQ ~p [Raise: ~p - ~p Call: ~p] ~n", [PID, Min, Max, Call]);
     {packet, {game_stage, _GID, Stage}} ->
-      io:format("NEW_STAGE [~p] ~n", [Stage]);
+      ?FLOG("NEW_STAGE [~p] ~n", [Stage]);
     {packet, {seat_state, _GID, _SN, _State, undefined, _Inplay, _Nick}} ->
       ok;
     {packet, {seat_state, _GID, _SN, State, Player, Inplay, _Nick}} ->
-      io:format("SEAT_STATE ~p [State: ~p Inplay: ~p] ~n", [Player, State, Inplay]);
+      ?FLOG("SEAT_STATE ~p [State: ~p Inplay: ~p] ~n", [Player, State, Inplay]);
     {call, Amount} ->
       call(PID, Amount);
     {fold} ->
@@ -94,7 +94,7 @@ player_loop(PID) ->
     {leave} ->
       leave(PID);
     _Msg ->
-      %io:format("Flush [~p]: ~p~n", [PID, Msg]),
+      %?FLOG("Flush [~p]: ~p~n", [PID, Msg]),
       ok
   end,
   player_loop(PID).

@@ -1033,16 +1033,16 @@ rank_player_staright_flush_test() ->
   gr([{Cards, ?HC_STRAIGHT_FLUSH, High1, ?CF_NONE, Suit} || {Cards, High1, Suit} <- L]).
 
 print_bin(X) ->
-    io:format("AKQJT98765432A~n"),
-    io:format("~14.2.0B~n", [X]).
+    ?FLOG("AKQJT98765432A~n"),
+    ?FLOG("~14.2.0B~n", [X]).
 
 print_rep([C, D, H, S]) ->
     print_rep({C, D, H, S});
 
 print_rep({C, D, H, S}) ->
-    io:format("   AKQJT98765432A~n"),
-    io:format("C: ~14.2.0B~n", [C]),
-    io:format("D: ~14.2.0B~n", [D]),
-    io:format("H: ~14.2.0B~n", [H]),
-    io:format("S: ~14.2.0B~n", [S]).
+    ?FLOG("   AKQJT98765432A~n"),
+    ?FLOG("C: ~14.2.0B~n", [C]),
+    ?FLOG("D: ~14.2.0B~n", [D]),
+    ?FLOG("H: ~14.2.0B~n", [H]),
+    ?FLOG("S: ~14.2.0B~n", [S]).
 

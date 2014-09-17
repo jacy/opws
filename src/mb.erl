@@ -67,7 +67,7 @@ handle_cast({'RUN', Game, Barrier, Delay, Trace}, Data)
     Port = Data#mb.port,
     if 
         Data#mb.trace ->
-            io:format("RUN: ~p, ~p:~p, ~p~n", 
+            ?FLOG("RUN: ~p, ~p:~p, ~p~n", 
                       [Game1#irc_game.id, Host, Port, now()]);
         true ->
             ok
@@ -130,7 +130,7 @@ handle_info({'END', GID, Winners}, Data) ->
     Success = mbu:match_winners(Game#test_game.winners, Winners1),
     if
         Data#mb.trace ->
-            io:format("END: ~w, Success: ~w~n", [GID, Success]);
+            ?FLOG("END: ~w, Success: ~w~n", [GID, Success]);
         true ->
             ok
     end,
@@ -140,9 +140,9 @@ handle_info({'END', GID, Winners}, Data) ->
                 true ->
                     if 
                         Data#mb.trace ->
-                            io:format("~w: Expected winners: ~w~n", 
+                            ?FLOG("~w: Expected winners: ~w~n", 
                                       [GID, Game#test_game.winners]),
-                            io:format("~w: Received winners: ~w~n", 
+                            ?FLOG("~w: Received winners: ~w~n", 
                                       [GID, Winners1]);
                         true ->
                             ok
@@ -158,7 +158,7 @@ handle_info({'END', GID, Winners}, Data) ->
              },
     if 
         (Data2#mb.finished rem 50) == 0 ->
-            io:format("~w games finished~n", [Data2#mb.finished]);
+            ?FLOG("~w games finished~n", [Data2#mb.finished]);
         true ->
             ok
     end,
@@ -179,7 +179,7 @@ handle_info({'CANCEL', GID}, Data) ->
     Game = gb_trees:get(GID, Games),
     if
         Data#mb.trace ->
-            io:format("CANCEL: ~w~n", [GID]);
+            ?FLOG("CANCEL: ~w~n", [GID]);
         true ->
             ok
     end,
@@ -191,7 +191,7 @@ handle_info({'CANCEL', GID}, Data) ->
              },
     if 
         (Data1#mb.finished rem 50) == 0 ->
-            io:format("~w games finished~n", [Data1#mb.finished]);
+            ?FLOG("~w games finished~n", [Data1#mb.finished]);
         true ->
             ok
     end,
@@ -283,7 +283,7 @@ run(Host, TestMode) ->
     db:start(),
     pg2:start(),
     Port = next_port(Host),
-    io:format("~p: game server on port ~p~n", [node(), Port]),
+    ?FLOG("~p: game server on port ~p~n", [node(), Port]),
     server:start(Host, Port, TestMode),
     {ok, _} = start(TestMode),
     ok.
@@ -297,7 +297,7 @@ next_port(Host) ->
     timer:sleep(100),
     case pg2:get_members(?GAME_SERVERS) of
         {error, X} ->
-            io:format("next_port: ~p~n", [X]),
+            ?FLOG("next_port: ~p~n", [X]),
             3000;
         L when is_list(L) ->
             next_port(Host, L, 3000)

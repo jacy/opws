@@ -158,7 +158,7 @@ print(GameId) ->
     {ok, Dets} = dets:open_file(ircdb, [{file, "ircdb.dat"},
                                         {keypos, 2}]),
     [Game] = dets:lookup(Dets, GameId),
-    io:format("~p~n", [Game]),
+    ?FLOG("~p~n", [Game]),
     dets:close(Dets).
 
 filter() ->
@@ -169,8 +169,8 @@ filter() ->
     dets:traverse(Dets, fun filter/1),
     Props2 = dets:info(Dets),
     Count2 = fetch_prop(size, Props2),
-    io:format("~w records~n", [Count2]),
-    io:format("~w records removed~n", [Count1 - Count2]),
+    ?FLOG("~w records~n", [Count2]),
+    ?FLOG("~w records removed~n", [Count1 - Count2]),
     dets:close(Dets).
 
 count() ->
@@ -178,7 +178,7 @@ count() ->
                                         {keypos, 2}]),
     Props = dets:info(Dets),
     Count = fetch_prop(size, Props),
-    io:format("~w records~n", [Count]),
+    ?FLOG("~w records~n", [Count]),
     dets:close(Dets).
 
 filter(Game) ->

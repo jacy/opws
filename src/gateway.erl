@@ -18,20 +18,20 @@ start([Node, Port, MaxPlayers])
     start(Node, Port1, Max).
 
 start(Node, Port, MaxPlayers) ->
-    io:format("gateway:start(~w, ~w, ~w)~n",
+    ?FLOG("gateway:start(~w, ~w, ~w)~n",
         [Node, Port, MaxPlayers]),
     case net_adm:ping(Node) of
   pong ->
-      io:format("Waiting for game servers...~n"),
+      ?FLOG("Waiting for game servers...~n"),
       case wait_for_game_servers(10) of
     ok ->
         F = fun(Sock) -> handoff(Sock, MaxPlayers) end, 
         tcp_server:start_raw_server(Port, F, 10240, 10240);
     _ ->
-        io:format("No game servers found, exiting.~n")
+        ?FLOG("No game servers found, exiting.~n")
       end;
   _ ->
-      io:format("Gateway cannot talk to Mnesia master ~w, exiting.~n", 
+      ?FLOG("Gateway cannot talk to Mnesia master ~w, exiting.~n", 
           [Node])
     end.
 
@@ -42,10 +42,10 @@ find_server(MaxPlayers) ->
       Count = gen_server:call(Pid, 'USER COUNT'),
       if
     Count < MaxPlayers ->
-        %%io:format("~s:~w: ~w players~n", [Host, Port, Count]),
+        %%?FLOG("~s:~w: ~w players~n", [Host, Port, Count]),
         {list_to_binary(Host), Port};
     true ->
-        io:format("~s:~w is full...~n", [Host, Port]),
+        ?FLOG("~s:~w is full...~n", [Host, Port]),
         find_server(MaxPlayers)
       end;
   Any ->

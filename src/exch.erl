@@ -113,7 +113,7 @@ process_cast(Event, Exch) ->
   Result = Mod:State(Data, Ctx, Event),
   case Event of
 	{timeout,_,_} -> ok;
-	_ -> io:format("Executed Mod=~w, State=~w, Event=~w, Result=~w ~n",[Mod,State,Event,Result])
+	_ -> ?FLOG("Executed Mod=~w, State=~w, Event=~w, Result=~w ~n",[Mod,State,Event,Result])
 	end,
    advance(Exch, Event, Result).
 
@@ -123,7 +123,7 @@ fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Result = Mod:start(Exch1#exch.data, Ctx, Params),
 	case Event of
 		{timeout,_,_} -> ok;
-		_ -> io:format("	Fsm init Mod=~w, Result=~w ~n",[Mod,Result])
+		_ -> ?FLOG("	Fsm init Mod=~w, Result=~w ~n",[Mod,Result])
 	end,
     advance(Exch1, Event, Result).
 

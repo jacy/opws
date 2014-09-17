@@ -4,7 +4,7 @@
 %%% Database schema
 %%%
 
--export([install/1, install/0, populate/0]).
+-export([install/1, install/0, populate/0,remove/1]).
 
 -include("schema.hrl").
 -include("common.hrl").
@@ -13,11 +13,14 @@
 install() ->
     install([node()]).
 
+remove(Nodes) ->
+	mnesia:stop(),
+    mnesia:delete_schema(Nodes).
+
 install(Nodes) when is_list(Nodes) ->
-    mnesia:stop(),
-    mnesia:delete_schema(Nodes),
+    remove(Nodes),
     catch(mnesia:create_schema(Nodes)),
-    db:start(),
+    mnesia:start(),
     install_counter(Nodes),
     install_player_info(Nodes),
     install_player(Nodes),
@@ -37,7 +40,7 @@ install_player_info(Nodes) ->
         mnesia:create_table(tab_player_info, 
                             [
                              {disc_copies, Nodes}, 
-                             {index, [usr]}, 
+                             {index, [usr]},  % index on usr field
                              {type, set}, 
                              {attributes, record_info(fields, tab_player_info)}
                             ]).

@@ -5,6 +5,7 @@
 %%% Tools to convert IRC Poker db files to something OpenPoker can use
 %%%
 
+-include("common.hrl").
 -include("ircdb.hrl").
 
 convert(Dir) ->
@@ -205,7 +206,7 @@ action(X) ->
         $- ->
             none;
         X ->
-            io:format("Unknown action: ~c~n", [X]),
+            ?FLOG("Unknown action: ~c~n", [X]),
             X
     end.
 

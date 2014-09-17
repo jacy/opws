@@ -32,7 +32,7 @@ start(Host, Port) ->
     start(Host, Port, false).
 
 start(Host, Port, TestMode) ->
-    case gen_server:start(lobby, [Host, Port, TestMode], []) of
+    case gen_server:start(?MODULE, [Host, Port, TestMode], []) of
         {ok, Pid} ->
             pg2:create(?GAME_SERVERS),
             ok = pg2:join(?GAME_SERVERS, Pid),
@@ -44,9 +44,6 @@ start(Host, Port, TestMode) ->
 
 init([Host, Port, TestMode]) -> %% {{{ gen_server callback
     process_flag(trap_exit, true), 
-    %%error_logger:logfile({open, "/tmp/" 
-    %%      ++ atom_to_list(node()) 
-    %%      ++ ".log"}),
     F = fun(Socket, Packet, LoopData) -> 
         case LoopData of
           none ->
@@ -71,9 +68,9 @@ terminate(normal, Server) ->
     mochiweb_websocket:stop(Server#server.port),
     ok.
 
-handle_cast({'BUMP', _Size}, Server) ->
-    %%stats:sum(packets_in, 1),
-    %%stats:sum(bytes_in, Size),
+handle_cast({'BUMP', Size}, Server) ->
+    stats:sum(packets_in, 1),
+    stats:sum(bytes_in, Size),
     {noreply, Server};
 
 handle_cast({'PONG', R = #pong{}}, Server) ->
@@ -160,8 +157,7 @@ process_test_start_game(Client, Socket, R) ->
     end,
     Client.
 
-process_game_query(Client, Socket, Q) 
-  when is_record(Q, game_query) ->
+process_game_query(Client, Socket, Q) when is_record(Q, game_query) ->
     find_games(Socket, 
                Q#game_query.game_type, 
                Q#game_query.limit_type,
@@ -190,15 +186,12 @@ parse_packet(Socket, {packet, Packet}, Client) ->
   {loop_data, Client};
 
 parse_packet(Socket, {socket, Packet}, Client) ->
+  gen_server:cast(Client#client.server, {'BUMP', size(Packet)}),
   Data = (catch pp:read(Packet)),
-  case Data of
-    #ping{} -> opps;
-    #seat_query{} -> opps;
-    _ -> ?LOG([{receive_packet, {packet, Packet, Data}}])
-  end,
-
+  ?LOG([{receive_packet, {packet, Packet, Data}}]),
   Client1 = case Data of 
-    {'EXIT', _Error} ->
+    {'EXIT', Error} ->
+	  ?ERROR([{parse_command_faild, {error, Error}}]),
       Client;
     #login{ usr = Usr, pass = Pass} ->
       process_login(Client, Socket, Usr, Pass);
@@ -210,7 +203,7 @@ parse_packet(Socket, {socket, Packet}, Client) ->
       process_pong(Client, Socket, R);
     R = #start_game{ rigged_deck = [_|_] } ->
       process_test_start_game(Client, Socket, R);
-    R when is_record(R, game_query) ->
+    R = #game_query{} ->
       process_game_query(Client, Socket, R);
     Event ->
       process_event(Client, Socket, Event)
@@ -242,6 +235,5 @@ find_games(Socket,
     send_games(Socket, L, lists:flatlength(L)).
 
 start_test_game(R) ->
-    {ok, Game} = game:start(R),
-    GID = game:call(Game, 'ID'),
-    #your_game{ game = GID }.
+    {ok, _} = game:start(R),
+    #your_game{ game = R#start_game.id }.

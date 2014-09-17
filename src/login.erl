@@ -1,10 +1,6 @@
 -module(login).
 
-%%%
-%%% Player login and logout handling
-%%%
-
--export([login/3, test/0]).
+-export([login/3]).
 
 -include("common.hrl").
 -include("pp.hrl").
@@ -14,7 +10,7 @@ login(Usr, Pass, Socket)
   when is_binary(Usr),
        is_binary(Pass),
        is_pid(Socket) -> % socket handler process
-    Recs = db:index_read(tab_player_info, Usr, #tab_player_info.usr),
+    Recs = dbms:dirty_index_read(tab_player_info, Usr, #tab_player_info.usr),
     login(Recs, [Usr, Pass, Socket]).
 
 login([], _) ->
@@ -24,11 +20,11 @@ login([], _) ->
 login([Info], [_Usr, Pass|_] = Args) 
   when is_record(Info, tab_player_info) ->
     PID = Info#tab_player_info.pid,
-    Player = case db:read(tab_player, PID) of
+    Player = case dbms:read(tab_player, PID) of
                  [P] ->
+					 ?FLOG("Same player has login: ~w~n", [P]),
                      P;
                  _ ->
-                     ok = db:delete(tab_player, PID),
                      #tab_player{ pid = PID }
              end,
     %% replace dead pids with none
@@ -39,8 +35,8 @@ login([Info], [_Usr, Pass|_] = Args)
     %% check player state and login
     Condition = check_player(Info, Player1, [Pass], 
                              [
-                              fun is_account_disabled/3,
                               fun is_bad_password/3,
+                              fun is_account_disabled/3,
                               fun is_player_busy/3,
                               fun is_player_online/3,
                               fun is_client_down/3,
@@ -80,7 +76,7 @@ login(Info, Player, player_online, Args) ->
 
 login(Info, Player, client_down, [_, _, Socket]) ->
   %% tell player process to talk to the new socket
-  io:format("Tell player to talk to new socket~n"),
+  ?FLOG("Tell player to talk to new socket~n"),
   gen_server:cast(Player#tab_player.process, {'SOCKET', Socket}),
   Player1 = Player#tab_player{ socket = Socket },
   {Info, Player1, {ok, Player#tab_player.process}};
@@ -162,28 +158,3 @@ fix_pid(Pid)
         _ ->
             none
     end.
-
-%% logout(ID)
-%%   when is_number(ID) ->
-%%     case db:read(player, ID) of
-%%  [Player] ->
-%%             logout(Player);
-%%  _ ->
-%%      oops
-%%     end;
-
-%% logout(Player) 
-%%   when is_record(Player, player) ->
-%%     player:stop(Player#player.process).
-
-%%% 
-%%% Handlers
-%%%
-
-%%%
-%%% Test suite
-%%%
-
-test() ->
-    ok.
-

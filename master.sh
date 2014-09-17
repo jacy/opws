@@ -1,5 +1,6 @@
 COOKIE='jacygames'
-NODE_NAME='s1@127.0.0.1'
+NODE_NAME=$1'@127.0.0.1'
+echo 'Node name is:'$NODE_NAME
 MNESIA_DIR='/mnesia/'$NODE_NAME
 
 

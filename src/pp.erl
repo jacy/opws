@@ -1085,7 +1085,7 @@ send(Socket, Data, _Ping) ->
       opps
       %?LOG([{'>>>>>>>>', {data, Data}, {bin, Bin}}])
   end,
-  %%io:format("SND ~p~n", [Bin]),
+  %%?FLOG("SND ~p~n", [Bin]),
   case catch gen_tcp:send(Socket, websocket:encoding(Bin)) of
     ok ->
       ok;

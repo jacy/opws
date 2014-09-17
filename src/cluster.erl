@@ -1,33 +1,78 @@
 -module(cluster).
 
--export([prepare_data/0, start_lobby/0, sync_data/1, start_games/0, kill_games/0, kill_game/1]).
+-export([mnesia_master/0, mnesia_slave/1, setup_lobby/1, setup_games/1]).
+-export([add_node/1, sync_all_data/1, start_games/0, kill_games/0, kill_game/1, disconnect_mnesia/1]).
 
 -include("common.hrl").
 -include("schema.hrl").
 -include("pp.hrl").
 
-prepare_data() ->
+-define(SET_LOG_FILE(), error_logger:logfile({open, "/tmp/elog/" ++ atom_to_list(node()) ++ ".log"})).
+
+mnesia_master() ->
+	?SET_LOG_FILE(),
 	schema:install(),
 	player:create(<<"jacy">>,<<"jacy">>,<<"JacyHong">>,<<"location_SG">>,10000),
 	player:create(<<"lena">>,<<"lena">>,<<"Lena">>,<<"location_SG">>,10000),
 	player:create(<<"hanhan">>,<<"hanhan">>,<<"HanHan">>,<<"location_SG">>,10000).
 
+mnesia_slave([MasterNode]) when is_atom(MasterNode)->
+	?SET_LOG_FILE(),
+	sync_all_data(MasterNode).
+
+setup_lobby([MasterNode]) when is_atom(MasterNode) ->
+	?SET_LOG_FILE(),
+	add_node(MasterNode),
+	start_lobby().
+
+setup_games([MasterNode]) when is_atom(MasterNode)->
+	?SET_LOG_FILE(),
+	add_node(MasterNode),
+	start_games().
+
+
+
+%% ===========================================================================================================================================
 
 start_lobby() ->
 	lobby:start(['8002','192.168.1.10']).
 
-%% Only need to sync once at the first deploy, restart will auto sync.
-sync_data(MasterNode) ->
-	db:start(),
+
+%% The function call mnesia:del_table_copy(schema, mynode@host) deletes the node 'mynode@host' from the Mnesia system. 
+%% The call fails if mnesia is running on 'mynode@host'. The other mnesia nodes will never try to connect to that node again. Note, 
+%% if there is a disc resident schema on the node 'mynode@host', the entire mnesia directory should be deleted. 
+%% This can be done with mnesia:delete_schema/1. If mnesia is started again on the the node 'mynode@host' and the directory has not been cleared,
+%% mnesia's behaviour is undefined.
+sync_all_data(MasterNode) when is_atom(MasterNode)->
+	schema:remove([node()]),
+	mnesia:start(),
 	mnesia:change_config(extra_db_nodes, [MasterNode]),
-    mnesia:change_table_copy_type(schema, node(), disc_copies),
     Tabs = mnesia:system_info(tables) -- [schema],
-    [mnesia:add_table_copy(Tab,node(), disc_copies) || Tab <- Tabs].
+    [mnesia:add_table_copy(Tab, node(), disc_copies) || Tab <- Tabs].
+
+
+%% All the tables will be in master node, so it can use sticky lock.
+%% Game server talk with player by global pid not need to use mnesia tables info.
+%% So can skip copy datas from master node. Can set up a menisa slave node to copy datas for fault tolerance.
+add_node(MasterNode) when is_atom(MasterNode)->
+	schema:remove([node()]),
+	mnesia:start(),
+	Result = mnesia:change_config(extra_db_nodes, [MasterNode]),
+	?FLOG("Node:~w connected to MasterNode:~w,Result:~p",[node(),MasterNode,Result]),
+	mnesia:change_table_copy_type(schema, node(), disc_copies).
 	
+disconnect_mnesia(Node) when is_atom(Node)->
+	mnesia:del_table_copy(schema, Node).
 
 start_games() ->
-    {atomic, Games} = db:find(tab_game_config),
-    start_games(Games).
+	 case db:wait_for_tables([tab_game_config, tab_game_xref], 10000) of
+        ok ->
+    		{atomic, Games} = db:find(tab_game_config),
+    		start_games(Games);
+		  Other ->
+            ?ERROR([{wait_tables_timeout, {msg, Other}}]),
+            Other
+    end.
 
 start_games([]) ->
     ok;

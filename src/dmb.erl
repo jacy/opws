@@ -31,7 +31,7 @@ debug(GameID) ->
     bb:run(),
     mb:run(localhost, true),
     gateway:start(node(), 4000, 500000),
-    io:format("Debugging ~p~n", [GameID]),
+    ?FLOG("Debugging ~p~n", [GameID]),
     DB = mbu:opendb(),
     Data = #dmb{
       start_time = now(),
@@ -42,7 +42,7 @@ debug(GameID) ->
       started = length(pg2:get_members(?MULTIBOTS))
      },
     Data1 = test(DB, GameID, 1, 0, Data),
-    io:format("dmb: waiting for games to end...~n"),
+    ?FLOG("dmb: waiting for games to end...~n"),
     wait_for_games(Data1).
 
 %%% Simulate MaxGames concurrent games. Requires a set of 
@@ -69,7 +69,7 @@ test(MaxGames, Delay, Trace)
        is_atom(Trace) ->
     process_flag(trap_exit, true),
     gateway:start(node(), 4000, 500000),
-    io:format("Simulating gameplay with ~p games...~n", [MaxGames]),
+    ?FLOG("Simulating gameplay with ~p games...~n", [MaxGames]),
     DB = mbu:opendb(),
     Key = dets:first(DB),
     %% will reset the target once we know 
@@ -84,20 +84,20 @@ test(MaxGames, Delay, Trace)
       barrier = Barrier,
       started = length(pg2:get_members(?MULTIBOTS))
      },
-    io:format("== DB ~p~n", [DB]),
-    io:format("== Key ~p~n", [Key]),
-    io:format("== Max ~p~n", [MaxGames]),
-    io:format("== Data ~p~n", [Data]),
+    ?FLOG("== DB ~p~n", [DB]),
+    ?FLOG("== Key ~p~n", [Key]),
+    ?FLOG("== Max ~p~n", [MaxGames]),
+    ?FLOG("== Data ~p~n", [Data]),
     Data1 = test(DB, Key, MaxGames, 0, Data),
-    io:format("dmb: waiting for games to end...~n"),
+    ?FLOG("dmb: waiting for games to end...~n"),
     wait_for_games(Data1).
 
 go(Barrier, N) ->
-    io:format("dmb: ~p games will be launching simultaneously~n", [N]),
+    ?FLOG("dmb: ~p games will be launching simultaneously~n", [N]),
     gen_server:cast(Barrier, {'TARGET', N}).
 
 test(DB, '$end_of_table', _, N, Data) ->
-    io:format("dmb: End of database reached. No more games to launch!~n"),
+    ?FLOG("dmb: End of database reached. No more games to launch!~n"),
     go(Data#dmb.barrier, N),
     mbu:closedb(DB),
     Data;
@@ -120,7 +120,7 @@ test(DB, Key, N, Max, Data) ->
              },
     if
         (Data1#dmb.game_count rem 50) == 0 ->
-            io:format("~w games started, ~w players~n", 
+            ?FLOG("~w games started, ~w players~n", 
                       [Data1#dmb.game_count, Data1#dmb.player_count]);
         true ->
             ok
@@ -150,13 +150,13 @@ wait_for_games(Data)
                     wait_for_games(Data2)
             end;
         Other ->
-            io:format("wait_for_games: ~p~n", [Other]),
+            ?FLOG("wait_for_games: ~p~n", [Other]),
             wait_for_games(Data)
     end,
     T1 = Data#dmb.start_time,
     T2 = erlang:now(),
     Elapsed = timer:now_diff(T2, T1) / 1000 / 1000,
-    io:format("dmb: exited successfully, ~w seconds elapsed~n", 
+    ?FLOG("dmb: exited successfully, ~w seconds elapsed~n", 
               [Elapsed]).
 
 %%% Setup the database for running tests
@@ -172,14 +172,14 @@ cleanup() ->
     db:start(),
     case db:wait_for_tables([tab_game_config], 10000) of 
         ok ->
-            io:format("dmb:cleanup: deleting game info...~n"),
+            ?FLOG("dmb:cleanup: deleting game info...~n"),
             db:clear_table(tab_game_xref),
             db:clear_table(tab_timeout_history),
             counter:reset(game),
             CC = #tab_cluster_config{ id = 0, enable_dynamic_games = true},
             ok = db:write(CC);
         Any ->
-            io:format("dmb:cleanup: mnesia error ~w~n", [Any])
+            ?FLOG("dmb:cleanup: mnesia error ~w~n", [Any])
     end,
     ok.
 
@@ -197,13 +197,13 @@ run(Games, GameServers, BotServers, Interval)
     pg2:start(),
     start_bot_slaves(BotServers),
     start_game_slaves(GameServers),
-    io:format("cluster: ~p~n", [nodes()]),
+    ?FLOG("cluster: ~p~n", [nodes()]),
     wait_for_group(?LAUNCHERS),
     wait_for_group(?MULTIBOTS),
     wait_for_group(?GAME_SERVERS),
-    io:format("bot launchers  : ~p~n", [pg2:get_members(?LAUNCHERS)]),
-    io:format("game launchers : ~p~n", [pg2:get_members(?MULTIBOTS)]),
-    io:format("game servers   : ~p~n", [pg2:get_members(?GAME_SERVERS)]),
+    ?FLOG("bot launchers  : ~p~n", [pg2:get_members(?LAUNCHERS)]),
+    ?FLOG("game launchers : ~p~n", [pg2:get_members(?MULTIBOTS)]),
+    ?FLOG("game servers   : ~p~n", [pg2:get_members(?GAME_SERVERS)]),
     if 
         Interval =/= none ->
             stats:start(Interval);
@@ -249,7 +249,7 @@ start_slave_node(Name, Args) ->
             timer:sleep(1000),
             Node;
         Reason ->
-            io:format("Failed to start slave node: ~p. Retrying in 1 second.~n",
+            ?FLOG("Failed to start slave node: ~p. Retrying in 1 second.~n",
                       [Reason]),
             timer:sleep(1000),
             start_slave_node(Name, Args)
@@ -260,7 +260,7 @@ start_slave_node(Name, Args) ->
 wait_for_group(Name) ->
     case pg2:get_members(Name) of
         {error, _} ->
-            io:format("Group ~p is not available. Retrying in 1 second.~n",
+            ?FLOG("Group ~p is not available. Retrying in 1 second.~n",
                       [Name]),
             timer:sleep(1000),
             wait_for_group(Name);

@@ -1,5 +1,5 @@
 COOKIE='jacygames'
-NODE_NAME='s2@127.0.0.1'
+NODE_NAME='m2@127.0.0.1'
 MNESIA_DIR='/mnesia/'$NODE_NAME
 
 echo 'Mnesia storage dir:'$MNESIA_DIR

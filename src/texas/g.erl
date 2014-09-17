@@ -819,21 +819,21 @@ find(GameType, LimitType) ->
                     (G#tab_game_xref.limit)#limit.type == LimitType]),
     L = qlc:e(Q),
     lists:map(fun(R) ->
-                      Game = R#tab_game_xref.process,
-                      GID = R#tab_game_xref.gid,
-                      Joined = gen_server:call(Game, 'JOINED'),
-                      Waiting = 0, % not implemented
-                      _ = #game_info{
-                        game = GID,
-                        table_name = R#tab_game_xref.table_name,
-                        type = R#tab_game_xref.type,
-                        limit = R#tab_game_xref.limit,
-                        seat_count = R#tab_game_xref.seat_count,
-                        required = R#tab_game_xref.required,
-                        joined = Joined,
-                        waiting = Waiting
-                       }
-              end, L).
+          Game = R#tab_game_xref.process,
+          GID = R#tab_game_xref.gid,
+          Joined = gen_server:call(Game, 'JOINED'),
+          Waiting = 0, % not implemented
+          _ = #game_info{
+            game = GID,
+            table_name = R#tab_game_xref.table_name,
+            type = R#tab_game_xref.type,
+            limit = R#tab_game_xref.limit,
+            seat_count = R#tab_game_xref.seat_count,
+            required = R#tab_game_xref.required,
+            joined = Joined,
+            waiting = Waiting
+           }
+   end, L).
 
 seat_query(Game) ->
     Size = size(Game#game.seats),

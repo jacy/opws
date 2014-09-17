@@ -112,29 +112,29 @@ maybe_report(_, _) ->
     ok.
 
 report(R = #notify_join{}) ->
-    io:format("~p: JOIN: ~p @ ~p~n", 
+    ?FLOG("~p: JOIN: ~p @ ~p~n", 
               [R#notify_join.game,
                R#notify_join.player,
                R#notify_join.seat]);
 
 report(R = #notify_leave{}) ->
-    io:format("~p: LEAVE: ~p~n", 
+    ?FLOG("~p: LEAVE: ~p~n", 
               [R#notify_join.game,
                R#notify_join.player]);
 
 report(R = #game_info{}) ->
-    io:format("Game #~w, #players: ~w, joined: ~w, waiting: ~w; ",
+    ?FLOG("Game #~w, #players: ~w, joined: ~w, waiting: ~w; ",
               [R#game_info.game, 
                R#game_info.required, 
                R#game_info.joined, 
                R#game_info.waiting]),
     Limit = R#game_info.limit,
-    io:format("limit: low: ~w, high: ~w~n", 
+    ?FLOG("limit: low: ~w, high: ~w~n", 
               [Limit#limit.low, 
                Limit#limit.high]);
 
 report(R = #seat_state{ state = ?PS_FOLD }) ->
-    io:format("~p: FOLD: ~p~n",
+    ?FLOG("~p: FOLD: ~p~n",
               [R#seat_state.game, 
                R#seat_state.player
               ]);
@@ -143,86 +143,86 @@ report(#seat_state{}) ->
     ok;
 
 report(R = #notify_chat{}) ->
-    io:format("~w: CHAT: ~w: ~p~n",
+    ?FLOG("~w: CHAT: ~w: ~p~n",
               [R#notify_chat.game, 
                R#notify_chat.player, 
                R#notify_chat.message]);
 
 report(R = #notify_draw{ card = 0 }) ->
-    io:format("~w: CARD: ~w~n",
+    ?FLOG("~w: CARD: ~w~n",
               [R#notify_draw.game, 
                R#notify_draw.player]);
 
 report(R = #game_stage{}) ->
-    io:format("~w: STAGE: ~w~n", 
+    ?FLOG("~w: STAGE: ~w~n", 
               [R#game_stage.game,
                R#game_stage.stage]);
 
 report(R = #notify_raise{})
   when R#notify_raise.raise == 0,
 R#notify_raise.call == 0 ->
-    io:format("~w: CHECK: ~w~n",
+    ?FLOG("~w: CHECK: ~w~n",
               [R#notify_raise.game, 
                R#notify_raise.player]);
 
 report(R = #notify_raise{})
   when R#notify_raise.call == 0 ->
-    io:format("~w: CALL: ~w, ~-14.2. f~n",
+    ?FLOG("~w: CALL: ~w, ~-14.2. f~n",
               [R#notify_raise.game, 
                R#notify_raise.player,
                R#notify_raise.raise / 1.0]);
 
 report(R = #notify_raise{}) ->
-    io:format("~w: RAISE: ~w, ~-14.2. f~n",
+    ?FLOG("~w: RAISE: ~w, ~-14.2. f~n",
               [R#notify_raise.game, 
                R#notify_raise.player, 
                R#notify_raise.raise / 1.0]);
 
 report(R = #notify_sb{}) ->
-    io:format("~w: SB: ~w~n",
+    ?FLOG("~w: SB: ~w~n",
               [R#notify_sb.game, 
                R#notify_sb.sb]);
 
 report(R = #notify_bb{}) ->
-    io:format("~w: BB: ~w~n",
+    ?FLOG("~w: BB: ~w~n",
               [R#notify_bb.game, 
                R#notify_bb.bb]);
 
 report(R = #notify_shared{}) ->
-    io:format("~w: BOARD: ~w~n",
+    ?FLOG("~w: BOARD: ~w~n",
               [R#notify_shared.game, 
                R#notify_shared.card]);
 
 report(R = #notify_win{}) ->
-    io:format("~w: WIN: ~w, ~-14.2. f~n", 
+    ?FLOG("~w: WIN: ~w, ~-14.2. f~n", 
               [R#notify_win.game, 
                R#notify_win.player, 
                R#notify_win.amount / 1.0]);
 
 report(R = #notify_button{}) ->
-    io:format("~w: DEALER: ~w~n", 
+    ?FLOG("~w: DEALER: ~w~n", 
               [R#notify_button.game, 
                R#notify_button.button]);
 
 report(R = #notify_start_game{}) ->
-    io:format("~w: START~n", [R#notify_start_game.game]);
+    ?FLOG("~w: START~n", [R#notify_start_game.game]);
 
 report(R = #notify_cancel_game{}) ->
-    io:format("~w: CANCEL~n", [R#notify_cancel_game.game]);
+    ?FLOG("~w: CANCEL~n", [R#notify_cancel_game.game]);
 
 report(R = #notify_end_game{}) ->
-    io:format("~w: END~n", [R#notify_end_game.game]);
+    ?FLOG("~w: END~n", [R#notify_end_game.game]);
 
 report(R = #notify_hand{}) ->
     H = hand:to_string(R#notify_hand.hand),
-    io:format("~w: HAND: ~w, with ~p~n", 
+    ?FLOG("~w: HAND: ~w, with ~p~n", 
               [R#notify_hand.game, 
                R#notify_hand.player, 
                H]);
 
 report(R = #show_cards{}) ->
     Cards1 = [hand:card_to_string(Card) || Card <- R#show_cards.cards],
-    io:format("~w: SHOW: ~w: ~p~n", 
+    ?FLOG("~w: SHOW: ~w: ~p~n", 
               [R#show_cards.game, 
                R#show_cards.player, 
                Cards1]);

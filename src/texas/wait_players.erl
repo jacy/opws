@@ -29,7 +29,7 @@ wait_for_players(Game, Ctx, R = #join{}) ->
   {continue, Game1, Ctx};
 
 wait_for_players(Game, Ctx, R = #leave{}) ->
-  io:format("Wait for players got LEAVE EVENT=~w~n", [R]),
+  ?FLOG("Wait for players got LEAVE EVENT=~w~n", [R]),
   Game1 = g:leave(Game, R),
   {continue, Game1, Ctx};
 

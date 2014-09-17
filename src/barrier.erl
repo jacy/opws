@@ -60,7 +60,7 @@ terminate(_Reason, _Data) ->
 
 handle_cast('BUMP', Data) 
   when Data#barrier.counter + 1 >= Data#barrier.target ->
-    io:format("barrier: reached target of ~p~n", 
+    ?FLOG("barrier: reached target of ~p~n", 
               [Data#barrier.target]),
     {stop, normal, Data};
 
