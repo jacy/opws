@@ -7,7 +7,8 @@
 
 is_process_alive(Pid) 
   when is_pid(Pid) ->
-    rpc:call(node(Pid), erlang, is_process_alive, [Pid]).
+	%% node(P) Returns the node where Arg is located; is_process_alive(Pid) Pid must refer to a process at the local node.
+    rpc:call(node(Pid), erlang, is_process_alive, [Pid]). % use rpc call so as to ignore knowing the group name like game or player or others.
 
 init_db_slave(MasterNode) ->
     db:start(),

@@ -4,7 +4,7 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([start/1, stop/1, stop/2]).
+-export([start/1, stop/1, stop/2, socket/2]).
 
 -export([create/5, update_photo/2]).
 
@@ -26,16 +26,8 @@
           photo = undefined
          }).
 
-start(Usr) 
-  when is_binary(Usr) ->
-    %% make sure we exist
-    case db:index_read(tab_player_info, Usr, #tab_player_info.usr) of
-        [Info] ->
-            PID = Info#tab_player_info.pid,
-            gen_server:start({global, {player, PID}}, player, [PID], []);
-        Any ->
-            {error, Any}
-    end.
+start(PID) ->
+	gen_server:start({global, {player, PID}}, player, [PID], []).
 
   %% 初始化Player的时候,使用的是从tab_player_info中查询出来的ID
   %% 此ID为Integer类型，初始化函数也明确指明了类型，但为什么后续却又使用了pid类型的PID呢？
@@ -52,6 +44,9 @@ stop(Player)
 stop(Player, Reason) 
   when is_pid(Player) ->
     gen_server:cast(Player, {stop, Reason}).
+
+socket(Player, Socket)->
+	gen_server:cast(Player, {'SOCKET', Socket}).
 
 terminate(_Reason, Data) ->
     ok = db:delete(tab_player, Data#pdata.pid).
@@ -80,7 +75,6 @@ handle_cast(R = #notify_join{}, Data) ->
     {noreply, Data1};
 
 handle_cast(R = #notify_leave{}, Data) ->
-    Self = self(),
     Game = R#notify_leave.proc,
     Data1 = if 
                 Data#pdata.pid == R#notify_leave.player ->
@@ -90,8 +84,7 @@ handle_cast(R = #notify_leave{}, Data) ->
                     Games1 = gb_trees:delete(Game, Games),
                     if
                         LastGame and Zombie ->
-                            %% player requested logout previously
-                            spawn(fun() -> player:stop(Self) end);
+                            player:stop(self(), "Loging out");
                         true ->
                             ok
                     end,
@@ -129,9 +122,7 @@ handle_cast(#logout{}, Data) ->
   ?LOG([{logout, {playing, Data#pdata.playing}}]),
     case gb_trees:is_empty(Data#pdata.playing) of
         true ->
-            %% not playing anymore, can log out
-            Self = self(),
-            spawn(fun() -> player:stop(Self) end),
+            player:stop(self(), "Loging out"),
             {noreply, Data};
         _ ->
             %% delay until we leave our last game
@@ -277,9 +268,11 @@ is_record(R, notify_bb) ->
   {noreply, Data};
 
 handle_cast(stop, Data) ->
+	close_socket(Data#pdata.socket),
     {stop, normal, Data};
 
 handle_cast({stop, Reason}, Data) ->
+  close_socket(Data#pdata.socket),
   {stop, Reason, Data};
 
 handle_cast(Event, Data) ->
@@ -460,3 +453,11 @@ forward_to_client(Event, Data) ->
       ok
   end.
 
+close_socket(Socket) ->
+	?FLOG("Ask to close socket:~w",[Socket]),
+	case util:is_process_alive(Socket) of
+		true ->
+			Socket ! {packet, close};
+		_ ->
+		socket_already_colse
+	end.

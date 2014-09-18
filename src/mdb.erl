@@ -1,4 +1,4 @@
--module(dbms).
+-module(mdb).
 
 -export([dirty_read/2, dirty_index_read/3, update_balance/2, read/2]).
 
@@ -43,12 +43,14 @@ update_balance(K, Raise) ->
         R = B#tab_balance{amount = Balance},
         mnesia:write(R)
 	end,
-    mnesia:transaction(F).
+    {atomic, V} = mnesia:transaction(F),
+	V.
 
 
 read(T, K) ->
 	F = fun() ->
 		mnesia:read({T, K})
 	end,
-    mnesia:transaction(F).
+    {atomic, V} = mnesia:transaction(F),
+	 V.
 	

@@ -134,10 +134,12 @@ process_login(Client, Socket, Usr, Pass) ->
   end.
 
 process_logout(Client, _Socket) ->
-    gen_server:cast(Client#client.player, #logout{}),
-    %% replace player process with a visitor
-    {ok, Visitor} = visitor:start(self()),
-    Client#client{ player = Visitor }.
+	if Client#client.player /= none ->
+    		gen_server:cast(Client#client.player, #logout{});
+		true ->
+		   skip
+	end,
+	Client.
 
 process_ping(Client, Socket, R) ->
     ok = ?tcpsend(Socket, #pong{ orig_send_time = R#ping.send_time }),
@@ -178,9 +180,16 @@ process_event(Client, _Socket, Event) ->
   gen_server:cast(Client1#client.player, Event),
   Client1. %% }}}
 
+% Client close the socket
 parse_packet(Socket, tcp_closed, Client) ->
+  ?FLOG("Socket got tcp_close event, trying to logout"),
   process_logout(Client, Socket);
 
+parse_packet(Socket, {packet, close}, Client) ->
+  ?FLOG("Server closing the socket:~w",[self()]),
+  gen_tcp:close(Socket),
+  Client#client{ player = none};
+	
 parse_packet(Socket, {packet, Packet}, Client) ->
   ok = ?tcpsend(Socket, Packet),
   {loop_data, Client};

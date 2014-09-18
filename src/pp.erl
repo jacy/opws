@@ -1094,10 +1094,7 @@ send(Socket, Data, _Ping) ->
     {error, econnaborted} ->
       ok;
     Any ->
-      error_logger:error_report([
-          {message, "gen_tcp:send error"},
-          {module, ?MODULE}, 
-          {line, ?LINE},
+      ?ERROR([
           {socket, Socket}, 
           {port_info, erlang:port_info(Socket, connected)},
           {data, Data},

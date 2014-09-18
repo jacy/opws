@@ -9,8 +9,8 @@
 					pid,
 					usr,
 					password,
-          nick,
-          photo,
+          			nick,
+          			photo,
 					location,
 					login_errors = 0,
 					disabled = false % player is disabled
