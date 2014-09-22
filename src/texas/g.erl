@@ -38,8 +38,8 @@ make(R = #start_game{}, none, none) ->
     make(R);
 
 make(R = #start_game{}, Ctx, Mods) ->
-    Game = exch:new(game, Ctx, Mods),
-    Game:start([R]).
+    R1 = R#start_game{cbk=game, ctx=Ctx, modules=Mods},
+    exch:start([R1]).
 
 %%% Initialize seats
 

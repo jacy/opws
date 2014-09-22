@@ -143,7 +143,10 @@
 					start_delay,
 					player_timeout,
 					rigged_deck = [],
-					barrier
+					barrier,
+					cbk,
+					modules,
+					ctx
 				 }).
 
 -define(CMD_GAME_INFO, 18).

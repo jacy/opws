@@ -186,7 +186,7 @@ parse_packet(Socket, tcp_closed, Client) ->
   process_logout(Client, Socket);
 
 parse_packet(Socket, {packet, close}, Client) ->
-  ?FLOG("Server closing the socket:~w",[self()]),
+  ?FLOG("Server is closing the socket:~w",[self()]),
   gen_tcp:close(Socket),
   Client#client{ player = none};
 	

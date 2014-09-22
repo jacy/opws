@@ -1,9 +1,5 @@
--module(exch, [Cbk, Context, Modules]). % Cbk meaning Callbacks, it refers to a specified module which implemns to this behaviour.
+-module(exch).
 -behaviour(gen_server).
-
-%%%
-%%% A stack of game modules
-%%%
 
 -export([behaviour_info/1]).
 
@@ -18,6 +14,7 @@
 
 
 -record(exch, {
+		  cbk,
           data, % #game{}
           note,
           %% fsm 
@@ -38,16 +35,13 @@ behaviour_info(callbacks) ->
 %%% API
 %%%
 
-start([R= #start_game{id=GID}]) ->
-    gen_server:start({global, {Cbk, GID}}, THIS, [R], []).
+start([R= #start_game{id=GID, cbk=Cbk}]) ->
+	?LOG({start_game, R}),
+    gen_server:start({global, {Cbk, GID}}, ?MODULE, [R], []).
 
 stop(Pid)
   when is_pid(Pid) ->
-    gen_server:cast(Pid, stop);
-
-stop(ID)
-  when is_number(ID) ->
-    gen_server:cast({global, {Cbk, ID}}, stop).
+    gen_server:cast(Pid, stop).
 
 cast(Exch, Event) ->
     gen_server:cast(Exch, Event).
@@ -59,12 +53,13 @@ call(Exch, Event) ->
 %%% Implementation
 %%%
 
-init(Args) ->
+init(Args = [#start_game{cbk=Cbk,modules = Modules, ctx=Context}]) ->
     process_flag(trap_exit, true),
     {Data, Start} = Cbk:start(Args),
     Exch = #exch{
       data = Data,
       modules = Modules,
+	  cbk=Cbk,
       stack = Modules,
       ctx = Context
      },
@@ -75,7 +70,7 @@ init(Args) ->
             {ok, Exch1}
     end.
 
-terminate(Reason, Exch) ->
+terminate(Reason, Exch= #exch{cbk=Cbk}) ->
   ?LOG([{exch_terminate, {reason, Reason}, {exch, Exch}}]),
   Cbk:stop(Exch#exch.data),
   ok.
@@ -101,7 +96,7 @@ handle_info(Event, Exch) ->
 code_change(_OldVsn, Exch, _Extra) ->
     {ok, Exch}.
 
-process_call(Event, Exch) ->
+process_call(Event, Exch= #exch{cbk=Cbk}) ->
     Cbk:call(Event, Exch#exch.data).
 
 process_cast(Event, Exch) ->
@@ -131,7 +126,7 @@ advance(Exch = #exch{}, _, {next, State, Data, Ctx}) ->
     %% advance to the next state
     {noreply, Exch#exch{ state = State, data = Data, ctx = Ctx }};
 
-advance(Exch = #exch{}, Event, {skip, Data, Ctx}) ->
+advance(Exch= #exch{cbk=Cbk}, Event, {skip, Data, Ctx}) ->
   {noreply, Exch#exch{ data = Cbk:cast(Event, Ctx, Data)}};
 
 advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->

@@ -17,10 +17,9 @@
 -record(pdata, {
           pid,
           socket = none,
-          %% game to inplay cross-reference for this player
           playing = gb_trees:empty(),
           watching = gb_trees:empty(),          
-          zombie = 0, % % on autoplay until game ends
+          zombie = 0, % on autoplay until game ends
           self,
           nick = undefined,
           photo = undefined
@@ -29,8 +28,6 @@
 start(PID) ->
 	gen_server:start({global, {player, PID}}, player, [PID], []).
 
-  %% 初始化Player的时候,使用的是从tab_player_info中查询出来的ID
-  %% 此ID为Integer类型，初始化函数也明确指明了类型，但为什么后续却又使用了pid类型的PID呢？
 init([PID]) 
   when is_integer(PID) ->
     process_flag(trap_exit, true),
@@ -51,12 +48,11 @@ socket(Player, Socket)->
 terminate(_Reason, Data) ->
     ok = db:delete(tab_player, Data#pdata.pid).
 
+%% Disconnect visitor only
 handle_cast('DISCONNECT', Data) ->
   {noreply, Data};
 
 handle_cast({'SOCKET', Socket}, Data) ->
-  %% Socket 对应此Player的Socket进程
-  %% 为Player进程设置Socket进程标识(WebSocket进程)
   Data1 = Data#pdata{ socket = Socket },
   {noreply, Data1};
 
@@ -455,9 +451,4 @@ forward_to_client(Event, Data) ->
 
 close_socket(Socket) ->
 	?FLOG("Ask to close socket:~w",[Socket]),
-	case util:is_process_alive(Socket) of
-		true ->
-			Socket ! {packet, close};
-		_ ->
-		socket_already_colse
-	end.
+	catch Socket ! {packet, close}.
