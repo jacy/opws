@@ -81,9 +81,10 @@ start_games([Game|Rest]) ->
     start_game(Game),
     start_games(Rest).
 
-start_game(Game) ->
-    g:make(#start_game{ 
+start_game(Game)->
+    make(#start_game{ 
 		     id= Game#tab_game_config.id,
+			 game_code=Game#tab_game_config.code,
 			 table_name=Game#tab_game_config.name,
              type = Game#tab_game_config.type, 
              limit = Game#tab_game_config.limit, 
@@ -91,6 +92,13 @@ start_game(Game) ->
              player_timeout = Game#tab_game_config.player_timeout,
              seat_count = Game#tab_game_config.seat_count
             }).
+
+make(R= #start_game{game_code = ?GC_TEXAS_HOLDEM})->
+    exch:start([R#start_game{cbk = texas}]);
+
+make(_)->
+    game_not_supported.
+
 
 kill_games() ->
     {atomic, Games} = db:find(tab_game_xref),

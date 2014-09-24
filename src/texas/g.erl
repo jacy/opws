@@ -15,31 +15,13 @@
          add_bet/3, new_stage/1, reset_player_state/3,
          pot_size/1, draw/3, draw_shared/2, 
          inplay_plus/3, show_cards/2, rank_hands/1, 
-         pots/1, make/1, make/3, watch/3, unwatch/2,
+         pots/1, watch/3, unwatch/2,
          notify_state/2,broadcast_player_state/1,notify_pot/2,uuid/0
         ]).
 
 -include("texas.hrl").
--include_lib("eunit/include/eunit.hrl").
+
 -include_lib("stdlib/include/qlc.hrl").
-
-
-make(R = #start_game{}) ->
-    %% create a game stack. context is used to propagate 
-    %% game information from module to module, e.g. button
-    %% and blinds position for texas hold'em.
-    Mods = case R#start_game.type of
-               ?GT_TEXAS_HOLDEM ->
-                   texas_holdem_mods() 
-           end,
-    make(R, #texas{}, Mods).
-
-make(R = #start_game{}, none, none) ->
-    make(R);
-
-make(R = #start_game{}, Ctx, Mods) ->
-    R1 = R#start_game{cbk=game, ctx=Ctx, modules=Mods},
-    exch:start([R1]).
 
 %%% Initialize seats
 
@@ -870,60 +852,25 @@ setup(Id, Code, Name, GameType, SeatCount, Limit, Delay, Timeout) ->
 uuid() ->
 	 erlang:phash2(now(), 1 bsl 32).
 
-credit_player(GID, PID, Amount) ->
-    db:update_balance(tab_balance, PID, Amount),
-    ok = db:delete(tab_inplay, {GID, PID}).
-
-debit_player(GID, PID, Amount) 
-  when is_number(GID),
-       is_number(PID),
-       is_number(Amount) ->
-    BuyIn = trunc(Amount * 10000),
-    case db:read(tab_balance, PID) of
-        [] ->
-            {error, no_balance_found};
-        [B] when BuyIn > B#tab_balance.amount ->
-            {error, not_enough_money};
-        [_] ->
-            %% may need to perform these two in a transaction!
-            db:update_balance(tab_inplay, {GID, PID}, Amount),
-            db:update_balance(tab_balance, PID, - Amount),
-            ok;
-        Any ->
-            Any
-    end.
-
-core_texas_mods() ->
-    [
-     %% blind rules
-     {blinds, []},
-     %% deal 2 cards to each player
-     {deal_cards, [2, private]}, 
-     {rank, []}, 
-     %% start after BB, 3 raises
-     {betting, [?MAX_RAISES, ?GS_PREFLOP, true]}, 
-     %% show 3 shared cards
-     {deal_cards, [3, shared]}, 
-     {rank, []}, 
-     %% flop
-     {betting, [?MAX_RAISES, ?GS_FLOP]}, 
-     %% show 1 more shared card
-     {deal_cards, [1, shared]}, 
-     {rank, []}, 
-     %% turn
-     {betting, [?MAX_RAISES, ?GS_TURN]}, 
-     %% show 1 more shared card
-     {deal_cards, [1, shared]}, 
-
-     {rank, []}, 
-     %% river
-     {betting, [?MAX_RAISES, ?GS_RIVER]}, 
-     %% showdown
-     {showdown, []},
-     {delay, []} % delay according to winner counts
-    ].
-     
-texas_holdem_mods() ->
-    [ {wait_players, []} ] 
-        ++ core_texas_mods() 
-        ++ [ {restart, []} ].
+%% credit_player(GID, PID, Amount) ->
+%%     db:update_balance(tab_balance, PID, Amount),
+%%     ok = db:delete(tab_inplay, {GID, PID}).
+%% 
+%% debit_player(GID, PID, Amount) 
+%%   when is_number(GID),
+%%        is_number(PID),
+%%        is_number(Amount) ->
+%%     BuyIn = trunc(Amount * 10000),
+%%     case db:read(tab_balance, PID) of
+%%         [] ->
+%%             {error, no_balance_found};
+%%         [B] when BuyIn > B#tab_balance.amount ->
+%%             {error, not_enough_money};
+%%         [_] ->
+%%             %% may need to perform these two in a transaction!
+%%             db:update_balance(tab_inplay, {GID, PID}, Amount),
+%%             db:update_balance(tab_balance, PID, - Amount),
+%%             ok;
+%%         Any ->
+%%             Any
+%%     end.

@@ -58,7 +58,11 @@
 
 -define(GS_BETTING, (?GS_PREFLOP bor ?GS_FLOP bor ?GS_TURN bor ?GS_RIVER)).
 
-%%% Game type
+%%% Game Code
+
+-define(GC_TEXAS_HOLDEM, texas).
+
+%%% TEXAS Type
 
 -define(GT_TEXAS_HOLDEM, 0).
 -define(GT_IRC_TEXAS, 1). % IRC poker db

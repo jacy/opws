@@ -6,15 +6,14 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([start/1, stop/1, cast/2, call/2]).
+-export([start/1 ]).
 
 -include("common.hrl").
 -include("pp.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 
 -record(exch, {
-		  cbk,
+		  callback,
           data, % #game{}
           note,
           %% fsm 
@@ -25,11 +24,13 @@
          }).
 
 behaviour_info(callbacks) ->
-    [{start, 1},  % call on init
+    [{start, 1},
+     {modules, 1},
+     {context, 0},
      {stop, 1}, 
-     {dispatch, 2},
      {call, 2},
-     {cast, 2}].
+     {cast, 3}].
+
 
 %%%
 %%% API
@@ -39,29 +40,20 @@ start([R= #start_game{id=GID, cbk=Cbk}]) ->
 	?LOG({start_game, R}),
     gen_server:start({global, {Cbk, GID}}, ?MODULE, [R], []).
 
-stop(Pid)
-  when is_pid(Pid) ->
-    gen_server:cast(Pid, stop).
-
-cast(Exch, Event) ->
-    gen_server:cast(Exch, Event).
-
-call(Exch, Event) ->
-    gen_server:call(Exch, Event).
-
 %%%
 %%% Implementation
 %%%
 
-init(Args = [#start_game{cbk=Cbk,modules = Modules, ctx=Context}]) ->
+init(Args = [#start_game{cbk=Cbk}]) ->
     process_flag(trap_exit, true),
     {Data, Start} = Cbk:start(Args),
+	Modules = Cbk:modules(Args),
     Exch = #exch{
       data = Data,
       modules = Modules,
-	  cbk=Cbk,
+	  callback= Cbk,
       stack = Modules,
-      ctx = Context
+      ctx = Cbk:context()
      },
     case fsm_init(Exch, Start) of
         {stop, _, Exch1} ->
@@ -70,7 +62,7 @@ init(Args = [#start_game{cbk=Cbk,modules = Modules, ctx=Context}]) ->
             {ok, Exch1}
     end.
 
-terminate(Reason, Exch= #exch{cbk=Cbk}) ->
+terminate(Reason, Exch= #exch{callback=Cbk}) ->
   ?LOG([{exch_terminate, {reason, Reason}, {exch, Exch}}]),
   Cbk:stop(Exch#exch.data),
   ok.
@@ -96,7 +88,7 @@ handle_info(Event, Exch) ->
 code_change(_OldVsn, Exch, _Extra) ->
     {ok, Exch}.
 
-process_call(Event, Exch= #exch{cbk=Cbk}) ->
+process_call(Event, Exch= #exch{callback=Cbk}) ->
     Cbk:call(Event, Exch#exch.data).
 
 process_cast(Event, Exch) ->
@@ -126,7 +118,7 @@ advance(Exch = #exch{}, _, {next, State, Data, Ctx}) ->
     %% advance to the next state
     {noreply, Exch#exch{ state = State, data = Data, ctx = Ctx }};
 
-advance(Exch= #exch{cbk=Cbk}, Event, {skip, Data, Ctx}) ->
+advance(Exch= #exch{callback=Cbk}, Event, {skip, Data, Ctx}) ->
   {noreply, Exch#exch{ data = Cbk:cast(Event, Ctx, Data)}};
 
 advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
@@ -151,12 +143,7 @@ advance(Exch = #exch{}, Event, {goto, Mod, Data, _}) ->
     fsm_init(Exch1, Event);
 
 advance(_, Event, Result) ->
-    error_logger:error_report([{module, ?MODULE}, 
-                               {line, ?LINE},
-                               {self, self()}, 
-                               {event, Event}, 
-                               {result, Result}
-                              ]),
+    ?ERROR([unknow_event, {event, Event}, {result, Result}]),
     {noreply, none}.
 
 trim_stack(Mod, L = [{H, _}|_]) 

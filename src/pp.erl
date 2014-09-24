@@ -62,15 +62,12 @@ nick() ->
     string().
 
 photo() ->
-  binary(int()).  %% 实际上这是代表字符串的, size:4, string/binary
+  binary(int()).
 
 pass() ->
     string().
 
 message() ->
-    string().
-
-location() ->
     string().
 
 host() ->
@@ -160,9 +157,6 @@ cards() ->
 card() -> 
     short().
 
-suit() ->
-  byte().
-
 face() ->
     byte().
 
@@ -204,7 +198,7 @@ game_to_id(GID)
     GID.
 
 id_to_game(GID) ->
-    global:whereis_name({game, GID}).
+    global:whereis_name({?GC_TEXAS_HOLDEM, GID}).
 
 game() ->
     game(get(pass_through)).
@@ -1065,7 +1059,7 @@ read(<<?CMD_TOURNEY_INFO, Bin/binary>>) ->
 read(<<?CMD_NOTIFY_GAME_DETAIL, Bin/binary>>) ->
   unpickle(notify_game_detail(), Bin);
 
-read(<<?CMD_NOTIFY_GAME_DETAIL, Bin/binary>>) ->
+read(<<?CMD_NOTIFY_SEAT_DETAIL, Bin/binary>>) ->
   unpickle(notify_seat_detail(), Bin);
 
 read(<<?CMD_PING, Bin/binary>>) ->

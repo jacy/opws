@@ -48,13 +48,6 @@
 					tourney,
 					timer,
 					barrier,
-					note,
-					%% fsm 
-					modules, 
-					stack,
-					state,
-					ctx,
-					orig_ctx,
-					parent
+					note
 				 }).
 

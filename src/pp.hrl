@@ -135,6 +135,7 @@
 
 -record(start_game, {
 					id,
+					game_code,
 					table_name,
 					type,
 					limit,
@@ -144,9 +145,7 @@
 					player_timeout,
 					rigged_deck = [],
 					barrier,
-					cbk,
-					modules,
-					ctx
+					cbk
 				 }).
 
 -define(CMD_GAME_INFO, 18).

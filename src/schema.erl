@@ -128,7 +128,7 @@ install_counter(Nodes) ->
                             ]).
 
 populate() ->
-  g:setup(1, texas, <<"5paw6JGh5Lqs5aib5qiC5aC0">>, ?GT_TEXAS_HOLDEM, 9,
+  g:setup(1, ?GC_TEXAS_HOLDEM, <<"5paw6JGh5Lqs5aib5qiC5aC0">>, ?GT_TEXAS_HOLDEM, 9,
           #limit{ type = ?LT_NO_LIMIT, low = 5, high = 10, min = 100, max = 2000 },
           ?START_DELAY, ?PLAYER_TIMEOUT). 
 

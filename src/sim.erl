@@ -4,9 +4,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include("common.hrl").
--include("game.hrl").
 -include("pp.hrl").
 -include("schema.hrl").
+-include("texas/game.hrl").
 -include("texas/ctx.hrl").
 
 init() ->
