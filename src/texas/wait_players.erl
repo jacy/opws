@@ -12,7 +12,7 @@ start(Game, Ctx, []) ->
   {next, wait_for_players, Game1, Ctx1}.
 
 wait_for_players(Game, Ctx, {timeout, _, _}) ->
-  Ready = g:get_seats(Game, ?PS_READY),
+  Ready = seat:get_seats(Game, ?PS_READY),
   ReqCount = Game#game.required_player_count,
   Start = (length(Ready) >= ReqCount),
   if

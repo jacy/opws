@@ -9,7 +9,7 @@ start(Game, Ctx, [N, Type]) ->
     Game1 = case Type of
                 private ->
                     B = Ctx1#texas.b,
-                    Seats = g:get_seats(Game, B, ?PS_STANDING),
+                    Seats =seat:get_seats(Game, B, ?PS_STANDING),
                     g:draw(Game, Seats, N);
                 shared ->
                     g:draw_shared(Game, N)

@@ -1,8 +1,11 @@
 -module(mdb).
 
--export([dirty_read/2, dirty_index_read/3, update_balance/2, read/2]).
+-export([dirty_read/2, dirty_index_read/3, update_balance/2, read/2, find/8]).
 
+-include("common.hrl").
+-include("pp.hrl").
 -include("schema.hrl").
+-include_lib("stdlib/include/qlc.hrl").
 
 %%  1. Accessing mnesia tables from a QLC list comprehension must always be done within a transaction.
 
@@ -53,4 +56,55 @@ read(T, K) ->
 	end,
     {atomic, V} = mnesia:transaction(F),
 	 V.
+
+query_op(Arg, Op, Value) 
+  when is_number(Arg),
+       is_number(Value) ->
+    case Op of
+        ?OP_IGNORE ->
+            true;
+        ?OP_EQUAL ->
+            Arg == Value;
+        ?OP_LESS ->
+            Arg < Value;
+        ?OP_GREATER ->
+            Arg > Value;
+        _ ->
+            false
+    end.
+
+find(GameType, LimitType,
+     ExpOp, Expected, 
+     JoinOp, Joined,
+     WaitOp, Waiting) ->
+    F = fun() -> find(GameType, LimitType) end,
+    {atomic, L} = mnesia:transaction(F),
+    F1 = fun(R = #game_info{}) ->
+                 query_op(R#game_info.required, ExpOp, Expected) 
+                     and query_op(R#game_info.joined, JoinOp, Joined) 
+                     and query_op(R#game_info.waiting, WaitOp, Waiting)
+         end,
+    {atomic, lists:filter(F1, L)}.
+
+find(GameType, LimitType) ->
+    Q = qlc:q([G || G <- mnesia:table(tab_game_xref),
+                    G#tab_game_xref.type == GameType,
+                    (G#tab_game_xref.limit)#limit.type == LimitType]),
+    L = qlc:e(Q),
+    lists:map(fun(R) ->
+          Game = R#tab_game_xref.process,
+          GID = R#tab_game_xref.gid,
+          Joined = gen_server:call(Game, 'JOINED'),
+          Waiting = 0, % not implemented
+          _ = #game_info{
+            game = GID,
+            table_name = R#tab_game_xref.table_name,
+            type = R#tab_game_xref.type,
+            limit = R#tab_game_xref.limit,
+            seat_count = R#tab_game_xref.seat_count,
+            required = R#tab_game_xref.required,
+            joined = Joined,
+            waiting = Waiting
+           }
+   end, L).
 	

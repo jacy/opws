@@ -1,16 +1,9 @@
 -module(g).
 
-%%%
-%%% Game utility functions
-%%%
-
--export([get_seats/2, get_seats/3, is_empty/1,
-         reset/1, broadcast/2, broadcast/3,
+-export([reset/1, broadcast/2, broadcast/3,
          notify_start_game/1, notify_cancel_game/1,
          join/2, leave/2, kick/1, set_state/3,
-         get_seat/2, find/8, seat_query/1, 
-         setup/8, create_seats/1,
-         request_bet/5, process_autoplay/2,
+		  setup/8, request_bet/5, process_autoplay/2,
          cancel_timer/1, restart_timer/2, 
          add_bet/3, new_stage/1, reset_player_state/3,
          pot_size/1, draw/3, draw_shared/2, 
@@ -21,62 +14,6 @@
 
 -include("texas.hrl").
 
--include_lib("stdlib/include/qlc.hrl").
-
-%%% Initialize seats
-
-create_seats(SeatCount) ->
-    Seats = erlang:make_tuple(SeatCount, none),
-    create_seats(Seats, SeatCount).
-
-create_seats(Seats, I) when I =:= 0 ->
-    Seats;
-
-create_seats(Seats, I) ->
-    Seat = #seat {
-      player = none,
-      bet = 0,
-      hand = none,
-      state = ?PS_EMPTY,
-      cmd_que = []
-     },
-    Seats1 = setelement(I, Seats, Seat),
-    create_seats(Seats1, I - 1).
-
-%%% Create a list of seats matching a certain state
-
-get_seats(Game, none, Mask) ->
-    get_seats(Game, Mask);
-
-get_seats(Game, From, Mask) ->
-    Size = size(Game#game.seats),
-    get_seats(Game#game.seats, Size, From, Size, Mask, []).
-
-get_seats(Game, Mask) ->
-    Size = size(Game#game.seats),
-    get_seats(Game#game.seats, Size, Size, Size, Mask, []).
-
-get_seats(_Seats, 0, _At, _, _Mask, _Acc) ->
-    [];
-
-get_seats(_Seats, _Size, _At, 0, _Mask, Acc) ->
-    lists:reverse(Acc);
-
-get_seats(Seats, Size, At, Counter, Mask, Acc) ->
-    SeatNum = (At rem Size) + 1,
-    Seat = element(SeatNum, Seats),
-    IsMember = (Seat#seat.state band Mask) > 0,
-    List = if
-      IsMember ->
-        [SeatNum|Acc];
-      true ->
-        Acc
-    end,
-    get_seats(Seats, Size, At + 1, Counter - 1, Mask, List).
-
-is_empty(Game) ->
-    Seats = get_seats(Game, ?PS_ANY),
-    (Game#game.observers == []) and (Seats == []).
 
 notify_start_game(Game) ->
     %Msg = lang:msg(?GAME_STARTING),
@@ -94,7 +31,7 @@ notify_cancel_game(Game) ->
 %%% Broadcast
 
 broadcast_player_state(Game) ->
-    L = seat_query(Game),
+    L = seat:seat_query(Game),
     F = fun(S) -> 
         Player = pp:id_to_player(S#seat_state.player),
         Nick = case is_pid(Player) of
@@ -109,7 +46,7 @@ broadcast_player_state(Game) ->
     lists:foreach(F, L).
 
 notify_player_state(Player, Game) ->
-    L = seat_query(Game),
+    L = seat:seat_query(Game),
     F = fun(S) -> 
         Pid = pp:id_to_player(S#seat_state.player),
         Nick = case is_pid(Pid) of
@@ -147,7 +84,7 @@ broadcast(Game, Event) ->
 
 broadcast(Game, Event, Except) ->
     %% notify players
-    Seats = get_seats(Game, ?PS_ANY bor ?PS_OUT),
+    Seats = seat:get_seats(Game, ?PS_ANY bor ?PS_OUT),
     Players = make_players(Game, Seats),
     broadcast(Game, Players, Event, Except), 
     broadcast(Game, Game#game.observers, Event, none).
@@ -238,7 +175,7 @@ unwatch(Game, R) ->
   Game#game{ observers = Obs }.
 
 watch(Game, Ctx, R) ->
-  Players = get_seats(Game, ?PS_ANY),
+  Players = seat:get_seats(Game, ?PS_ANY),
 
   Detail = #notify_game_detail{
     game = Game#game.gid, 
@@ -520,21 +457,6 @@ notify_state(Game, SeatNum)
      },
     broadcast(Game, Event).
 
-get_seat(Game, SeatNum) 
-  when is_record(Game, game),
-       is_integer(SeatNum) ->
-    element(SeatNum, Game#game.seats);
-
-get_seat(Game, Player)
-  when is_record(Game, game),
-       is_pid(Player) ->
-    case gb_trees:lookup(Player, Game#game.xref) of
-        {value, SeatNum} ->
-            {SeatNum, element(SeatNum, Game#game.seats)};
-        _ ->
-            none
-    end.
-
 request_bet(Game, SeatNum, Call, Min, Max) ->
   Seat = element(SeatNum, Game#game.seats),
   Game1 = broadcast(Game, #notify_actor{ game = Game#game.gid, seat = SeatNum}),
@@ -720,7 +642,7 @@ inplay_plus(Game, Player, Amount)
 
 show_cards(Game, Button) 
   when is_integer(Button) ->
-    Seats = get_seats(Game, Button, ?PS_ANY),
+    Seats = seat:get_seats(Game, Button, ?PS_ANY),
     show_cards(Game, Seats);
 
 show_cards(_, []) -> 
@@ -743,7 +665,7 @@ show_cards(Game, [H|T]) ->
     show_cards(Game, T).
 
 rank_hands(Game) ->
-    Seats = get_seats(Game, ?PS_SHOWDOWN),
+    Seats = seat:get_seats(Game, ?PS_SHOWDOWN),
     rank_hands(Game, Seats).
 
 rank_hands(Game, Seats) ->
@@ -765,76 +687,6 @@ rank_hands(Game, Seats) ->
 
 pots(Game) ->
     pot:pots(Game#game.pot).
-
-query_op(Arg, Op, Value) 
-  when is_number(Arg),
-       is_number(Value) ->
-    case Op of
-        ?OP_IGNORE ->
-            true;
-        ?OP_EQUAL ->
-            Arg == Value;
-        ?OP_LESS ->
-            Arg < Value;
-        ?OP_GREATER ->
-            Arg > Value;
-        _ ->
-            false
-    end.
-
-find(GameType, LimitType,
-     ExpOp, Expected, 
-     JoinOp, Joined,
-     WaitOp, Waiting) ->
-    F = fun() -> find(GameType, LimitType) end,
-    {atomic, L} = mnesia:transaction(F),
-    F1 = fun(R = #game_info{}) ->
-                 query_op(R#game_info.required, ExpOp, Expected) 
-                     and query_op(R#game_info.joined, JoinOp, Joined) 
-                     and query_op(R#game_info.waiting, WaitOp, Waiting)
-         end,
-    {atomic, lists:filter(F1, L)}.
-
-find(GameType, LimitType) ->
-    Q = qlc:q([G || G <- mnesia:table(tab_game_xref),
-                    G#tab_game_xref.type == GameType,
-                    (G#tab_game_xref.limit)#limit.type == LimitType]),
-    L = qlc:e(Q),
-    lists:map(fun(R) ->
-          Game = R#tab_game_xref.process,
-          GID = R#tab_game_xref.gid,
-          Joined = gen_server:call(Game, 'JOINED'),
-          Waiting = 0, % not implemented
-          _ = #game_info{
-            game = GID,
-            table_name = R#tab_game_xref.table_name,
-            type = R#tab_game_xref.type,
-            limit = R#tab_game_xref.limit,
-            seat_count = R#tab_game_xref.seat_count,
-            required = R#tab_game_xref.required,
-            joined = Joined,
-            waiting = Waiting
-           }
-   end, L).
-
-seat_query(Game) ->
-    Size = size(Game#game.seats),
-    seat_query(Game, Size, []).
-
-seat_query(_Game, 0, Acc) ->
-    Acc;
-
-seat_query(Game, SeatNum, Acc) ->
-    Seat = element(SeatNum, Game#game.seats),
-    SeatState = #seat_state{
-      game = Game#game.gid,
-      seat = SeatNum,
-      state = Seat#seat.state,
-      player = Seat#seat.pid,
-      inplay = Seat#seat.inplay
-     },
-    Acc1 = [SeatState|Acc],
-    seat_query(Game, SeatNum - 1, Acc1).
 
 setup(Id, Code, Name, GameType, SeatCount, Limit, Delay, Timeout) ->
     Game = #tab_game_config {

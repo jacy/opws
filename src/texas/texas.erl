@@ -2,7 +2,7 @@
 
 -behavior(exch).
 
--export([id/0, start/1, modules/1, context/0, stop/1, dispatch/2, call/2, cast/3]).
+-export([id/0, start/1, modules/1, context/0, stop/1, call/2, cast/3]).
 
 -include("texas.hrl").
 
@@ -25,7 +25,7 @@ start([R = #start_game{id = GID}]) ->
       max = (R#start_game.limit)#limit.max,
       deck = deck:new(R#start_game.rigged_deck),
       pot = pot:new(),
-      seats = g:create_seats(R#start_game.seat_count),
+      seats = seat:create_seats(R#start_game.seat_count),
       required_player_count = R#start_game.required,
       timeout = R#start_game.player_timeout,
 	  start_delay = R#start_game.start_delay,
@@ -53,21 +53,6 @@ stop(Game)
     %% remove ourselves from the db
     ok = db:delete(tab_game_xref, Game1#game.gid).
 
-%%% Watch the game without joining
-
-dispatch(R = #sit_out{}, Game) ->
-    change_state(Game, R#sit_out.player, ?PS_SIT_OUT);
-
-dispatch(R = #come_back{}, Game) ->
-    change_state(Game, R#sit_out.player, ?PS_PLAY);
-
-dispatch({'SET STATE', Player, State}, Game) ->
-    change_state(Game, Player, State);
-
-dispatch(R, Game) ->
-  ?LOG([{unknown_dispatch, {msg, R}, {game, Game}}]),
-  Game.
-    
 call('ID', Game) ->
   Game#game.gid;
 
@@ -75,17 +60,17 @@ call('REQUIRED', Game) ->
   Game#game.required_player_count;
 
 call('JOINED', Game) ->
-  Seats = g:get_seats(Game, ?PS_ANY),
+  Seats =seat:get_seats(Game, ?PS_ANY),
   length(Seats);
 
 call('WAITING', _) ->
   0;
 
 call('SEAT QUERY', Game) ->
-  g:seat_query(Game);
+  seat:seat_query(Game);
 
 call({'INPLAY', Player}, Game) ->
-  {_, Seat} = g:get_seat(Game, Player),
+  {_, Seat} = seat:get_seat(Game, Player),
   Seat#seat.inplay;
 
 call('DEBUG', Game) ->
@@ -96,12 +81,11 @@ cast({timeout, _, {out, SeatNum, PID}}, _Ctx, Game) ->
   case Seat#seat.pid of
     PID ->
       GID = global:whereis_name({?MODULE, Game#game.gid}),
-      gen_server:cast(Seat#seat.player, #leave{ game = GID });
+      gen_server:cast(Seat#seat.player, #leave{game = GID });
     _ ->
       ok
   end,
   Game;
-
 
 cast(R = #watch{}, Ctx, Game) ->
   g:watch(Game, Ctx, R);
@@ -110,17 +94,22 @@ cast(R = #unwatch{}, _Ctx, Game) ->
   ?LOG([{game_unwatch, R}]),
  g:unwatch(Game, R);
 
+cast(R = #sit_out{},_Ctx, Game) ->
+    change_state(Game, R#sit_out.player, ?PS_SIT_OUT);
+
+cast(R = #come_back{},_Ctx, Game) ->
+    change_state(Game, R#come_back.player, ?PS_PLAY);
+
+cast({'SET STATE', Player, State}, _Ctx, Game) ->
+    change_state(Game, Player, State);
+
 cast(R, _Ctx, Game) ->
    ?LOG([{unknown_dispatch, {msg, R}, {game, Game}}]),
   Game.
 
-%%%
-%%% Utility
-%%%
-
 change_state(Game, Player, State) ->
     Game1 = g:set_state(Game, Player, State),
-    {SeatNum, Seat} = g:get_seat(Game1, Player),
+    {SeatNum, Seat} = seat:get_seat(Game1, Player),
     R = #seat_state{
       game = Game1#game.gid,
       seat = SeatNum,

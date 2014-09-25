@@ -16,10 +16,9 @@
 		  callback,
           data, % #game{}
           note,
-          %% fsm 
-          modules, % original modules, not changing it so can reset the stacks 
-          stack, % real time modules info, when modules finished, got removed
-          state, % state of current module
+          modules,
+          stack,
+          state,
           ctx
          }).
 
@@ -31,18 +30,9 @@ behaviour_info(callbacks) ->
      {call, 2},
      {cast, 3}].
 
-
-%%%
-%%% API
-%%%
-
 start([R= #start_game{id=GID, cbk=Cbk}]) ->
 	?LOG({start_game, R}),
     gen_server:start({global, {Cbk, GID}}, ?MODULE, [R], []).
-
-%%%
-%%% Implementation
-%%%
 
 init(Args = [#start_game{cbk=Cbk}]) ->
     process_flag(trap_exit, true),
@@ -80,7 +70,6 @@ handle_cast(Event, Exch) ->
 handle_call(Event, _From, Exch) ->
     {reply, process_call(Event, Exch), Exch}.
 
-%%% {timeout, _, _} at the moment
 %% handle_info({timeout, _Ref, none}, Exch) 
 handle_info(Event, Exch) ->
     process_cast(Event, Exch).
@@ -114,30 +103,24 @@ fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
 	end,
     advance(Exch1, Event, Result).
 
-advance(Exch = #exch{}, _, {next, State, Data, Ctx}) ->
-    %% advance to the next state
-    {noreply, Exch#exch{ state = State, data = Data, ctx = Ctx }};
+advance(Exch = #exch{}, _, {next, NextState, Data, Ctx}) ->
+    {noreply, Exch#exch{ state = NextState, data = Data, ctx = Ctx }};
 
 advance(Exch= #exch{callback=Cbk}, Event, {skip, Data, Ctx}) ->
   {noreply, Exch#exch{ data = Cbk:cast(Event, Ctx, Data)}};
 
-advance(Exch = #exch{ stack = [_|T] }, Event, {stop, Data, Ctx}) ->
-    %% this module is done
-    Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = T },
+advance(Exch = #exch{ stack = [_|NextMod] }, Event, {stop, Data, Ctx}) ->
+    Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = NextMod },
     fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, _, {continue, Data, Ctx}) ->
-    %% continue processing in this state
     {noreply, Exch#exch{ data = Data, ctx = Ctx }};
 
 advance(Exch = #exch{}, Event, {goto, top, Data, _}) ->
-    %% go to the top of the stack
-    %% and start from the beginning
     Exch1 = Exch#exch{ data = Data, stack = Exch#exch.modules },
     fsm_init(Exch1, Event);
 
 advance(Exch = #exch{}, Event, {goto, Mod, Data, _}) ->
-    %% go to a different module
     Stack = trim_stack(Mod, Exch#exch.stack),
     Exch1 = Exch#exch{ data = Data, stack = Stack },
     fsm_init(Exch1, Event);

@@ -22,7 +22,7 @@ start(Game, Ctx, [MaxRaises, Stage, HaveBlinds]) ->
   end,
 
   B = Ctx2#texas.b, 
-  Active = g:get_seats(Game, B, ?PS_PLAY),
+  Active =seat:get_seats(Game, B, ?PS_PLAY),
   PlayerCount = length(Active),
 
   if
@@ -38,7 +38,7 @@ start(Game, Ctx, [MaxRaises, Stage, HaveBlinds]) ->
         HaveBlinds ->
           %% start with the player after the big blind
           BB = Ctx2#texas.bb,
-          Temp = g:get_seats(Game1, BB, ?PS_PLAY),
+          Temp =seat:get_seats(Game1, BB, ?PS_PLAY),
           Player = hd(Temp);
         true ->
           %% start with the first player after the button
@@ -58,7 +58,7 @@ betting(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
 
   N = Ctx#texas.exp_seat,
   Amt = Ctx#texas.exp_amt,
-  Seat = g:get_seat(Game1, Ctx#texas.exp_seat),
+  Seat = seat:get_seat(Game1, Ctx#texas.exp_seat),
   Inplay = Seat#seat.inplay,
 
   IsAllin = case Amt >= Inplay of
@@ -94,7 +94,7 @@ betting(Game, Ctx, #raise{ player = Player, raise = Amt }) ->
   Min = Ctx#texas.exp_min,
   Max = Ctx#texas.exp_max,
   N = Ctx#texas.exp_seat,
-  Seat = g:get_seat(Game, Ctx#texas.exp_seat),
+  Seat = seat:get_seat(Game, Ctx#texas.exp_seat),
   Inplay = Seat#seat.inplay,
   RC = Game1#game.raise_count,
   ?LOG([{betting, {amount, Amt}, {inplay, Inplay, call, Call}}]),
@@ -196,7 +196,7 @@ betting(Game, Ctx, _) ->
   {skip, Game, Ctx}.
 
 next_turn(Game, Ctx, N) ->
-  Active = g:get_seats(Game, N, ?PS_PLAY),
+  Active =seat:get_seats(Game, N, ?PS_PLAY),
   ActiveCount = length(Active),
   StandingCount = standing_count(Game, N),
 
@@ -216,7 +216,7 @@ next_turn(Game, Ctx, N) ->
   end.
 
 ask_for_bet(Game, Ctx=#texas{call=OldCall, have_blinds=HaveBlinds, bb=BB,sb_amt=SBAmt,bb_amt=BBAmt}, N) ->
-    Seat = g:get_seat(Game, N),
+    Seat = seat:get_seat(Game, N),
     Player = Seat#seat.player,
     Inplay = Seat#seat.inplay,
     Bet = Seat#seat.bet,
@@ -245,5 +245,5 @@ ask_for_bet(Game, Ctx=#texas{call=OldCall, have_blinds=HaveBlinds, bb=BB,sb_amt=
   }.
 
 standing_count(Game,Sn) ->
-	Standing = g:get_seats(Game, Sn, ?PS_STANDING),
+	Standing =seat:get_seats(Game, Sn, ?PS_STANDING),
 	length(Standing).

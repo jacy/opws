@@ -7,7 +7,7 @@
 -define(COMMISSION,0.00).
 -define(DELAY_UNIT,2000).
 
-start(Game, Ctx, []) ->
+start(Game, Ctx=#texas{stage=PreviousStage}, []) ->
   Ctx1 = Ctx#texas{stage=?GS_SHOWDOWN},
   Game1 = g:new_stage(Game),
   Game2 = g:broadcast(Game1, #game_stage{ game = Game1#game.gid, stage = Ctx1#texas.stage}),
@@ -24,10 +24,10 @@ start(Game, Ctx, []) ->
 
   %% TODO 将所有金额不足的玩家重新设置状态
   {_, Big} = (Game3#game.limit):blinds(Game3#game.low, Game3#game.high),
-  Game4 = check_inplay(g:get_seats(Game, ?PS_ANY), Big, Game3),
+  Game4 = check_inplay(seat:get_seats(Game, ?PS_ANY), Big, Game3),
 
   WinDelay = length(Winners)  * ?DELAY_UNIT,
-  Delay = case Ctx1#texas.stage of
+  Delay = case PreviousStage of
 	  ?GS_RIVER -> ?DELAY_UNIT + WinDelay;
 	  _ -> WinDelay
   end,

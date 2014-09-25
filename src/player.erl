@@ -8,8 +8,6 @@
 
 -export([create/5, update_photo/2]).
 
--include_lib("eunit/include/eunit.hrl").
-
 -include("common.hrl").
 -include("pp.hrl").
 -include("schema.hrl").
@@ -350,8 +348,6 @@ create(Usr, Pass, Nick, Location, Balance)
             Info = #tab_player_info {
               pid = ID,
               usr = Usr,
-              %% store a hash of the password
-              %% instead of the password itself
               password = erlang:phash2(Pass, 1 bsl 32),
               nick = Nick,
               location = Location
@@ -374,8 +370,7 @@ update_photo(ID, Photo) when is_binary(Photo) ->
   end.
 
 create_runtime(ID, Pid) 
-  when is_number(ID),
-       is_pid(Pid) ->
+  when is_number(ID),is_pid(Pid) ->
     Player = #tab_player {
       pid = ID,
       process = Pid

@@ -21,7 +21,7 @@ start(Game, Ctx, [Type]) ->
   ),
 
   %% 确定大小盲并下盲注
-  AllPlayers = g:get_seats(Game1, Button, ?PS_ACTIVE),
+  AllPlayers =seat:get_seats(Game1, Button, ?PS_ACTIVE),
   L = length(AllPlayers),
   HeadsUp = (L == 2), %% 除庄家外只有一个玩家
 
@@ -90,15 +90,15 @@ advance_button(Game, Ctx) ->
   case Ctx#texas.b of
     none ->
       %% 新的牌局开始时庄家自动选择
-      AllPlayers = g:get_seats(Game, ?PS_PLAY),
+      AllPlayers =seat:get_seats(Game, ?PS_PLAY),
       lists:last(AllPlayers);
     _ ->
-      Players = g:get_seats(Game, Ctx#texas.b, ?PS_PLAY),
+      Players =seat:get_seats(Game, Ctx#texas.b, ?PS_PLAY),
       hd(Players)
   end.
 
 ask_for_blind(Game, Ctx, N, Amount, State) ->
-  Seat = g:get_seat(Game, N),
+  Seat = seat:get_seat(Game, N),
   Player = Seat#seat.player,
   Ctx1 = Ctx#texas{ exp_player = Player, exp_seat = N, exp_amt = Amount },
 
@@ -118,7 +118,7 @@ ask_for_blind(Game, Ctx, N, Amount, State) ->
 post_sb(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
   N = Ctx#texas.exp_seat,
   Amt = Ctx#texas.exp_amt,
-  Seat = g:get_seat(Game, N),
+  Seat = seat:get_seat(Game, N),
 
   %% 为玩家下小盲注
   Ctx1 = Ctx#texas{ sb = N, sb_bet = Amt },
@@ -132,13 +132,13 @@ post_sb(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
   Game3 = g:notify_state(Game2, N),
 
   %% 为玩家下大盲注
-  BBPlayers = g:get_seats(Game3, N, ?PS_ACTIVE),
+  BBPlayers =seat:get_seats(Game3, N, ?PS_ACTIVE),
   ask_for_blind(Game3, Ctx1, hd(BBPlayers), Ctx1#texas.bb_amt, big_blind).
 
 post_bb(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
   N = Ctx#texas.exp_seat,
   Amt = Ctx#texas.exp_amt,
-  Seat = g:get_seat(Game, N),
+  Seat = seat:get_seat(Game, N),
 
   Ctx1 = Ctx#texas{ bb = N, call = Amt,
     %% 由其他模块决定谁应该行动
@@ -169,7 +169,7 @@ join(Game, Ctx, R, State) ->
 
 leave(Game, Ctx, R, State) ->
   Player = R#leave.player,
-  {Seat, _} = g:get_seat(Game, Player),
+  {Seat, _} = seat:get_seat(Game, Player),
 %%   PS = if
 %%     (State == big_blind) and (Seat == Ctx#texas.sb) ->
 %%       %% fold and leave next time 

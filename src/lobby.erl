@@ -236,7 +236,7 @@ find_games(Socket,
            #query_op{ op = ExpOp, val = Expected }, 
            #query_op{ op = JoinOp, val = Joined },
            #query_op{ op = WaitOp, val = Waiting }) ->
-    {atomic, L} = g:find(GameType, LimitType,
+    {atomic, L} = mdb:find(GameType, LimitType,
                          ExpOp, Expected, 
                          JoinOp, Joined,
                          WaitOp, Waiting),

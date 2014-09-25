@@ -1,28 +1,18 @@
 -record(seat, {
-					%% player process
-					player, 
-					%% player id
-					pid,
-					%% inplay balance
+					player,  % player process
+					pid,     % player id
 					inplay = 0.0,
-					%% total bet
-					bet,
-					%% cards
-					hand,
-					%% player state
-					state,
+					bet,     % total bet
+					hand,    % cards
+					state,   % player state
 					muck = false,
-					%% auto-play queue
-					cmd_que = []
-				 }).
+					cmd_que = [] % auto-play queue
+			 }).
 
 -record(game, {
 					gid, 
-					%% game type
-					type,
-					%% player to seat cross-reference
-					xref = gb_trees:empty(), 
-					%% seats tuple
+					type, % game type
+					xref = gb_trees:empty(), % player to seat cross-reference
 					seats,
 					limit,
 					low,
@@ -30,24 +20,16 @@
           			min,
           			max,
 					ante,
-					%% card deck
-					deck, 
-					%% shared cards list
-					board = [], 
-					%% pot structure
+					deck,  % card deck
+					board = [],  % shared cards list
 					pot,
-					%% game observers
 					observers = [], 
 					timeout, % player timeout
 					start_delay, % time to wait players
-					%% number of raises so far
-					raise_count = 0,
-					%% players required to start a game
+					raise_count = 0, % number of raises so far
 					required_player_count = 2,
-					%% tournament info
-					tourney,
+					tourney, % tournament info
 					timer,
 					barrier,
 					note
-				 }).
-
+				}).
