@@ -84,7 +84,7 @@ broadcast(Game, Event) ->
 
 broadcast(Game, Event, Except) ->
     %% notify players
-    Seats = seat:get_seats(Game, ?PS_ANY bor ?PS_OUT),
+    Seats = seat:get_seats(Game, ?PS_GAMING bor ?PS_OUT),
     Players = make_players(Game, Seats),
     broadcast(Game, Players, Event, Except), 
     broadcast(Game, Game#game.observers, Event, none).
@@ -113,7 +113,7 @@ reset(Game) ->
              },
     Seats = reset_hands(Game1#game.seats),
     Game2 = reset_bets(Game1#game{ seats = Seats }),
-    ResetMask = ?PS_ANY band (bnot ?PS_WAIT_BB),
+    ResetMask = ?PS_GAMING band (bnot ?PS_WAIT_BB),
     Game3 = reset_player_state(Game2, ResetMask, ?PS_PLAY),
     broadcast_player_state(Game3),
     Game3.
@@ -175,7 +175,7 @@ unwatch(Game, R) ->
   Game#game{ observers = Obs }.
 
 watch(Game, Ctx, R) ->
-  Players = seat:get_seats(Game, ?PS_ANY),
+  Players = seat:get_seats(Game, ?PS_GAMING),
 
   Detail = #notify_game_detail{
     game = Game#game.gid, 
@@ -192,15 +192,14 @@ watch(Game, Ctx, R) ->
   notify_player_state(R#watch.player, Game),
   
   if Ctx#texas.stage < ?GS_FLOP 
-						-> ok ;
+		-> ok ;
     true ->
-		  % Notify Game Shared Card
 		  notify_shared(lists:reverse(Game#game.board), Game, R#watch.player),
-		  notify_pot(Game#game.pot,R#watch.player)
+		  notify_pot(Game#game.pot, R#watch.player)
   end,
   
-  if Ctx#texas.stage band ?GS_BETTING > 0 ->
-		 gen_server:cast(R#watch.player,#notify_actor{ game = Game#game.gid, seat = Ctx#texas.exp_seat}); % Show timer
+  if Ctx#texas.stage band ?GS_BETTING > 0 -> % Show Bet Reqeust Timer
+		 gen_server:cast(R#watch.player,#notify_actor{ game = Game#game.gid, seat = Ctx#texas.exp_seat});
 	 true -> 
 		  ok
   end,
@@ -252,9 +251,8 @@ join(Game, R) ->
     OurPlayer ->
       Game;
     true ->
-      %% try to move the buy-in amount 
-      %% from balance to inplay
-      case do_buy_in(GID, PID, R#join.amount) of
+      %% move buy-in amount from balance to inplay
+      case mdb:buy_in(GID, PID, R#join.amount) of
         ok ->
           %% tell player
           R1 = #notify_join{ 
@@ -274,25 +272,6 @@ join(Game, R) ->
           Game
       end
   end.
-
-do_buy_in(GID, PID, Amt) 
-  when is_number(GID),
-       is_number(PID),
-       is_number(Amt) ->
-    BuyIn = trunc(Amt * 10000),
-    case db:read(tab_balance, PID) of
-        [] ->
-            {error, no_balance_found};
-        [B] when BuyIn > B#tab_balance.amount ->
-            {error, not_enough_money};
-        [_] ->
-            %% may need to perform these two in a transaction!
-            db:update_balance(tab_inplay, {GID, PID}, Amt),
-            db:update_balance(tab_balance, PID, - Amt),
-            ok;
-        Any ->
-            Any
-    end.
 
 do_join(Game, R, State) ->
     Seats = Game#game.seats,
@@ -642,7 +621,7 @@ inplay_plus(Game, Player, Amount)
 
 show_cards(Game, Button) 
   when is_integer(Button) ->
-    Seats = seat:get_seats(Game, Button, ?PS_ANY),
+    Seats = seat:get_seats(Game, Button, ?PS_GAMING),
     show_cards(Game, Seats);
 
 show_cards(_, []) -> 

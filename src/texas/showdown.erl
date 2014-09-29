@@ -24,7 +24,7 @@ start(Game, Ctx=#texas{stage=PreviousStage}, []) ->
 
   %% TODO 将所有金额不足的玩家重新设置状态
   {_, Big} = (Game3#game.limit):blinds(Game3#game.low, Game3#game.high),
-  Game4 = check_inplay(seat:get_seats(Game, ?PS_ANY), Big, Game3),
+  Game4 = check_inplay(seat:get_seats(Game, ?PS_GAMING), Big, Game3),
 
   WinDelay = length(Winners)  * ?DELAY_UNIT,
   Delay = case PreviousStage of

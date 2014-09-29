@@ -108,7 +108,7 @@
 -define(PS_MUCK, 512). % will show cards
 -define(PS_OUT, 1024). % can't play anymore
 
--define(PS_ANY, 
+-define(PS_GAMING, 
 				(?PS_PLAY bor
 				?PS_FOLD bor
 				?PS_WAIT_BB bor

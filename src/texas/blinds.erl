@@ -177,7 +177,7 @@ leave(Game, Ctx, R, State) ->
 %%       ?PS_CAN_LEAVE;
 %%     true ->
 %%       %% leave now
-%%       ?PS_ANY
+%%       ?PS_GAMING
 %%   end,
   Game1 = g:leave(Game, R),
   {continue, Game1, Ctx}.

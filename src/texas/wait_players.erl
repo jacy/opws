@@ -3,7 +3,6 @@
 -export([start/3, wait_for_players/3]).
 
 -include("texas.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 start(Game, Ctx, []) ->
   Game1 = g:restart_timer(Game, Game#game.start_delay),

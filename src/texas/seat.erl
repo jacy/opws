@@ -23,7 +23,10 @@ create_seats(Seats, I) ->
     Seats1 = setelement(I, Seats, Seat),
     create_seats(Seats1, I - 1).
 
-%%% Create a list of seats matching a certain state
+get_seats(Game, Mask) ->
+    Size = size(Game#game.seats),
+    get_seats(Game#game.seats, Size, Size, Size, Mask, []).
+
 
 get_seats(Game, none, Mask) ->
     get_seats(Game, Mask);
@@ -32,18 +35,15 @@ get_seats(Game, From, Mask) ->
     Size = size(Game#game.seats),
     get_seats(Game#game.seats, Size, From, Size, Mask, []).
 
-get_seats(Game, Mask) ->
-    Size = size(Game#game.seats),
-    get_seats(Game#game.seats, Size, Size, Size, Mask, []).
 
-get_seats(_Seats, 0, _At, _, _Mask, _Acc) ->
+get_seats(_Seats, 0, _ , _, _, _) ->
     [];
 
 get_seats(_Seats, _Size, _At, 0, _Mask, Acc) ->
     lists:reverse(Acc);
 
 get_seats(Seats, Size, At, Counter, Mask, Acc) ->
-    SeatNum = (At rem Size) + 1,
+    SeatNum = (At rem Size) + 1,  %
     Seat = element(SeatNum, Seats),
     IsMember = (Seat#seat.state band Mask) > 0,
     List = if
@@ -70,7 +70,7 @@ get_seat(Game, Player)
     end.
 
 is_empty(Game) ->
-    Seats = get_seats(Game, ?PS_ANY),
+    Seats = get_seats(Game, ?PS_GAMING),
     (Game#game.observers == []) and (Seats == []).
 
 seat_query(Game) ->
@@ -91,5 +91,3 @@ seat_query(Game, SeatNum, Acc) ->
      },
     Acc1 = [SeatState|Acc],
     seat_query(Game, SeatNum - 1, Acc1).
-
-

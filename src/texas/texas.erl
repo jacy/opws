@@ -60,7 +60,7 @@ call('REQUIRED', Game) ->
   Game#game.required_player_count;
 
 call('JOINED', Game) ->
-  Seats =seat:get_seats(Game, ?PS_ANY),
+  Seats =seat:get_seats(Game, ?PS_GAMING),
   length(Seats);
 
 call('WAITING', _) ->

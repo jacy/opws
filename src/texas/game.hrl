@@ -12,7 +12,7 @@
 -record(game, {
 					gid, 
 					type, % game type
-					xref = gb_trees:empty(), % player to seat cross-reference
+					xref = gb_trees:empty(), % key:player,value:seat, easier to retrive seat by player
 					seats,
 					limit,
 					low,

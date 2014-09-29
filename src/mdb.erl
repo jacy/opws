@@ -1,12 +1,11 @@
 -module(mdb).
 
--export([dirty_read/2, dirty_index_read/3, update_balance/2, read/2, find/8]).
+-export([dirty_read/2, dirty_index_read/3, update_balance/2, update_inplay/3, buy_in/3, read/2, write/1, find/8]).
 
 -include("common.hrl").
 -include("pp.hrl").
 -include("schema.hrl").
 -include_lib("stdlib/include/qlc.hrl").
-
 %%  1. Accessing mnesia tables from a QLC list comprehension must always be done within a transaction.
 
 %%  2. Transaction: 
@@ -38,24 +37,71 @@ dirty_read(T, K) ->
 dirty_index_read(T, K, F) ->
 	mnesia:dirty_index_read(T, K, F).
 
-update_balance(K, Raise) ->
-    V1 = trunc(Raise * 10000),
+update_balance(K, ChangeAmount) ->
+    V1 = trunc(ChangeAmount * 10000),
 	F = fun() ->
-		[B] = mnesia:wread({tab_balance, K}),
-        Balance = B#tab_balance.amount + V1,
-        R = B#tab_balance{amount = Balance},
-        mnesia:write(R)
+		R = case mnesia:wread({tab_balance, K}) of
+			[] -> 
+				#tab_balance{pid=K,amount=0};
+			[B] ->
+				B
+		end,
+        NewBalance = R#tab_balance.amount + V1,
+		if 
+			NewBalance < 0 -> 
+				mnesia:abort({error, not_enough_money});
+        	true -> 
+        		mnesia:write(R#tab_balance{amount = NewBalance})
+		end
 	end,
-    {atomic, V} = mnesia:transaction(F),
-	V.
+    transaction(F).
 
+update_inplay(GID, PID, ChangeAmount) ->
+	K = {GID,PID},
+    V1 = trunc(ChangeAmount * 10000),
+	F = fun() ->
+		R = case mnesia:wread({tab_inplay, K}) of
+			[] -> 
+				#tab_inplay{gidpid=K, amount=0};
+			[B] ->
+				B
+		end,
+        NewBalance = R#tab_inplay.amount + V1,
+		if 
+			NewBalance < 0 -> 
+				mnesia:abort({error, not_enough_money});
+        	true -> 
+        		mnesia:write(R#tab_inplay{amount = NewBalance})
+		end
+	end,
+    transaction(F).
+
+buy_in(GID, PID, Amt) when is_number(GID),is_number(PID),is_number(Amt) ->
+	F = fun() ->
+			%% When a child transaction aborts, the caller of the child transaction will get the return value {aborted, Reason}
+			update_balance(PID, -Amt),
+			update_inplay(GID, PID, Amt)
+	end,
+	transaction(F).
+		   
+transaction(F) ->
+	case mnesia:transaction(F) of 
+		{atomic, V} -> V;
+		{aborted, {throw, Error}} -> Error;
+		{aborted, Reason} -> Reason
+	end.
 
 read(T, K) ->
 	F = fun() ->
 		mnesia:read({T, K})
 	end,
-    {atomic, V} = mnesia:transaction(F),
-	 V.
+    transaction(F).
+
+write(R) ->
+	F = fun() ->
+		mnesia:write(R)
+	end,
+    transaction(F).
 
 query_op(Arg, Op, Value) 
   when is_number(Arg),
@@ -107,4 +153,3 @@ find(GameType, LimitType) ->
             waiting = Waiting
            }
    end, L).
-	
