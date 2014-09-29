@@ -11,7 +11,7 @@ is_process_alive(Pid)
     rpc:call(node(Pid), erlang, is_process_alive, [Pid]). % use rpc call so as to ignore knowing the group name like game or player or others.
 
 init_db_slave(MasterNode) ->
-    db:start(),
+    mdb:start(),
     mnesia:change_config(extra_db_nodes, [MasterNode]),
     mnesia:change_table_copy_type(schema, node(), disc_copies),
     Tabs = mnesia:system_info(tables) -- [schema],

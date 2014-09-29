@@ -43,7 +43,7 @@ login([Info], [Usr, Pass|_] = Args)
                              ]),
     ?LOG([{login}, {user, Usr},{check_player, Condition}]),
     {Player2, Info1, Result} = login(Info, Player1, Condition, Args),
-    case {db:write(Player2), db:write(Info1)} of
+    case {mdb:write(Player2), mdb:write(Info1)} of
         {ok, ok} ->
             Result;
         _ ->

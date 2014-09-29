@@ -1,7 +1,7 @@
 -module(cluster).
 
 -export([mnesia_master/0, mnesia_slave/1, setup_lobby/1, setup_games/1]).
--export([add_node/1, sync_all_data/1, start_games/0, kill_games/0, kill_game/1, disconnect_mnesia/1]).
+-export([add_node/1, sync_all_data/1, start_lobby/0, start_games/0, kill_games/0, kill_game/1, disconnect_mnesia/1]).
 
 -include("common.hrl").
 -include("schema.hrl").
@@ -65,9 +65,9 @@ disconnect_mnesia(Node) when is_atom(Node)->
 	mnesia:del_table_copy(schema, Node).
 
 start_games() ->
-	 case db:wait_for_tables([tab_game_config, tab_game_xref], 10000) of
+	 case mdb:wait_for_tables([tab_game_config, tab_game_xref], 10000) of
         ok ->
-    		{atomic, Games} = db:find(tab_game_config),
+    		{atomic, Games} = mdb:find(tab_game_config),
     		start_games(Games);
 		  Other ->
             ?ERROR([{wait_tables_timeout, {msg, Other}}]),
@@ -101,7 +101,7 @@ make(_)->
 
 
 kill_games() ->
-    {atomic, Games} = db:find(tab_game_xref),
+    {atomic, Games} = mdb:find(tab_game_xref),
     kill_games(Games).
 
 kill_games([]) ->

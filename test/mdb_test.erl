@@ -227,4 +227,3 @@ barrier(Count) ->
 	after 10000 ->
 		 throw(timeout)
 	end.
-	

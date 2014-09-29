@@ -44,7 +44,7 @@ socket(Player, Socket)->
 	gen_server:cast(Player, {'SOCKET', Socket}).
 
 terminate(_Reason, Data) ->
-    ok = db:delete(tab_player, Data#pdata.pid).
+    ok = mdb:delete(tab_player, Data#pdata.pid).
 
 %% Disconnect visitor only
 handle_cast('DISCONNECT', Data) ->
@@ -177,7 +177,7 @@ handle_cast(#player_query{ player = PID }, Data) ->
   Self = self(),
   NewData = case PID of 
     Self ->
-      case db:read(tab_player_info, Data#pdata.pid) of
+      case mdb:read(tab_player_info, Data#pdata.pid) of
         [Info] ->
           handle_cast(_ = #player_info{
               player = Data#pdata.pid,
@@ -201,7 +201,7 @@ handle_cast(#photo_query{ player = PID }, Data) ->
   {noreply, Data};
 
 handle_cast(R = #start_game{}, Data) ->
-    [CC] = db:read(tab_cluster_config, 0),
+    [CC] = mdb:read(tab_cluster_config, 0),
     R1 = if
              CC#tab_cluster_config.enable_dynamic_games ->
                  case g:make(R#start_game{ rigged_deck = [] }) of
@@ -218,7 +218,7 @@ handle_cast(R = #start_game{}, Data) ->
     {noreply, Data};
 
 handle_cast(#balance_query{}, Data) ->
-    case db:read(tab_balance, Data#pdata.pid) of
+    case mdb:read(tab_balance, Data#pdata.pid) of
         [Balance] ->
             R = #balance{
               amount = Balance#tab_balance.amount,
@@ -308,7 +308,7 @@ code_change(_OldVsn, Data, _Extra) ->
 %%%
 
 %% cast(PID, Event) ->
-%%     case db:read(tab_player, PID) of
+%%     case mdb:read(tab_player, PID) of
 %%  [Player] ->
 %%      gen_server:cast(Player#tab_player.process, Event);
 %%  _ ->
@@ -316,7 +316,7 @@ code_change(_OldVsn, Data, _Extra) ->
 %%     end.
 
 %% call(PID, Event) ->
-%%     case db:read(tab_player, PID) of
+%%     case mdb:read(tab_player, PID) of
 %%  [Player] ->
 %%      gen_server:call(Player#tab_player.process, Event);
 %%  _ ->
@@ -340,7 +340,7 @@ create(Usr, Pass, Nick, Location, Balance)
        is_binary(Nick),
        is_binary(Location),
        is_number(Balance) ->
-    case db:index_read(tab_player_info, Usr, #tab_player_info.usr) of
+    case mdb:dirty_index_read(tab_player_info, Usr, #tab_player_info.usr) of
         [_] ->
             {error, player_exists};
         _ ->
@@ -352,18 +352,18 @@ create(Usr, Pass, Nick, Location, Balance)
               nick = Nick,
               location = Location
              },
-            ok = db:write(Info),
-            db:update_balance(tab_balance, ID, Balance),
+            ok = mdb:write(Info),
+            mdb:update_balance(ID, Balance),
             {ok, ID}
     end.
 
 update_photo(ID, Photo) when is_binary(Photo) ->
-  case db:read(tab_player_info, ID) of
+  case mdb:read(tab_player_info, ID) of
     [Info] -> 
       Info1 = Info#tab_player_info{
         photo = Photo
       },
-      db:write(Info1),
+      mdb:write(Info1),
       {ok, ID};
     _ ->
       {error, player_not_exists}
@@ -375,7 +375,7 @@ create_runtime(ID, Pid)
       pid = ID,
       process = Pid
      },
-    ok = db:write(Player).
+    ok = mdb:write(Player).
 
 inplay(Data) 
   when is_record(Data, pdata) ->
@@ -431,10 +431,10 @@ get_photo(Player, Data) when is_pid(Player) ->
 get_photo(_, _) ->
   undefined.
 %% delete_balance(PID) ->
-%%     db:delete(tab_balance, PID).
+%%     mdb:delete(tab_balance, PID).
 
 %% update_balance(PID, Amount) ->
-%%     db:update_balance(tab_balance, PID, Amount).
+%%     mdb:update_balance(PID, Amount).
 
 forward_to_client(Event, Data) ->    
   if 

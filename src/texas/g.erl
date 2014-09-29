@@ -334,8 +334,8 @@ leave(Game, R) ->
           },
           %% update inplay balance
           Inplay = Seat#seat.inplay,
-          db:update_balance(tab_balance, PID, Inplay),
-          ok = db:delete(tab_inplay, {GID, PID}),
+          mdb:update_balance(PID, Inplay),
+          ok = mdb:delete(tab_inplay, {GID, PID}),
           ?LOG([{leave_auto_watch}]),
           Game3 = watch(#watch{player = Player}, Game2),
           ?LOG([{leave_auto_watch_end}]),
@@ -678,14 +678,14 @@ setup(Id, Code, Name, GameType, SeatCount, Limit, Delay, Timeout) ->
       start_delay = Delay,
       player_timeout = Timeout
      },
-    ok = db:write(Game).
+    ok = mdb:write(Game).
 
 uuid() ->
 	 erlang:phash2(now(), 1 bsl 32).
 
 %% credit_player(GID, PID, Amount) ->
-%%     db:update_balance(tab_balance, PID, Amount),
-%%     ok = db:delete(tab_inplay, {GID, PID}).
+%%     mdb:update_balance(PID, Amount),
+%%     ok = mdb:delete(tab_inplay, {GID, PID}).
 %% 
 %% debit_player(GID, PID, Amount) 
 %%   when is_number(GID),
@@ -699,8 +699,8 @@ uuid() ->
 %%             {error, not_enough_money};
 %%         [_] ->
 %%             %% may need to perform these two in a transaction!
-%%             db:update_balance(tab_inplay, {GID, PID}, Amount),
-%%             db:update_balance(tab_balance, PID, - Amount),
+%%             mdb:update_balance({GID, PID}, Amount),
+%%             mdb:update_balance(PID, - Amount),
 %%             ok;
 %%         Any ->
 %%             Any

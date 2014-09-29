@@ -280,7 +280,7 @@ run(Host, TestMode)
     run(atom_to_list(Host), TestMode);
 
 run(Host, TestMode) ->
-    db:start(),
+    mdb:start(),
     pg2:start(),
     Port = next_port(Host),
     ?FLOG("~p: game server on port ~p~n", [node(), Port]),

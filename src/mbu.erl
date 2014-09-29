@@ -48,12 +48,12 @@ create_players([Player|Rest])
   when is_record(Player, irc_player) ->
     Usr = list_to_binary(Player#irc_player.usr),
     Balance = Player#irc_player.balance,
-    case db:index_read(tab_player_info, 
+    case mdb:dirty_index_read(tab_player_info, 
                        Usr, #tab_player_info.usr) of
         [Info] ->
             PID = Info#tab_player_info.pid,
-            db:delete(tab_balance, PID),
-            db:update_balance(tab_balance, PID, Balance);
+            mdb:delete(tab_balance, PID),
+            mdb:update_balance(PID, Balance);
         [] ->
             player:create(Usr, <<"foo">>, <<"">>, Balance)
     end,

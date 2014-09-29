@@ -100,11 +100,11 @@ player_loop(PID) ->
   player_loop(PID).
 
 p(PID) ->
-  [P] = db:read(tab_player, PID),
+  [P] = mdb:read(tab_player, PID),
   P#tab_player.process.
 
 g(GID) ->
-  [G] = db:read(tab_game_xref, GID),
+  [G] = mdb:read(tab_game_xref, GID),
   G#tab_game_xref.process.
 
 debug(GID) when is_integer(GID) ->

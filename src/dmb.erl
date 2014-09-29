@@ -169,15 +169,15 @@ setup() ->
 %%% Delete the results of a previous test run
 
 cleanup() ->
-    db:start(),
-    case db:wait_for_tables([tab_game_config], 10000) of 
+    mdb:start(),
+    case mdb:wait_for_tables([tab_game_config], 10000) of 
         ok ->
             ?FLOG("dmb:cleanup: deleting game info...~n"),
-            db:clear_table(tab_game_xref),
-            db:clear_table(tab_timeout_history),
+            mdb:clear_table(tab_game_xref),
+            mdb:clear_table(tab_timeout_history),
             counter:reset(game),
             CC = #tab_cluster_config{ id = 0, enable_dynamic_games = true},
-            ok = db:write(CC);
+            ok = mdb:write(CC);
         Any ->
             ?FLOG("dmb:cleanup: mnesia error ~w~n", [Any])
     end,
@@ -193,7 +193,7 @@ run(Games, GameServers, BotServers, Interval)
   when is_integer(Games),
        is_integer(GameServers),
        is_integer(BotServers) ->
-    db:start(),
+    mdb:start(),
     pg2:start(),
     start_bot_slaves(BotServers),
     start_game_slaves(GameServers),

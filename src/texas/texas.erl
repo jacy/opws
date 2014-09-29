@@ -51,7 +51,7 @@ stop(Game)
     %% force players to leave
     g:kick(Game1),
     %% remove ourselves from the db
-    ok = db:delete(tab_game_xref, Game1#game.gid).
+    ok = mdb:delete(tab_game_xref, Game1#game.gid).
 
 call('ID', Game) ->
   Game#game.gid;
@@ -131,7 +131,7 @@ store_game_info(GID, R) ->
       timeout = R#start_game.player_timeout,
       required = R#start_game.required
      },
-    ok = db:write(Game).
+    ok = mdb:write(Game).
 
 core_texas_mods() ->
     [

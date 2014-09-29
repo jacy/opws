@@ -27,7 +27,7 @@ run() ->
     run(false).
 
 run(Trace) ->
-    db:start(),
+    mdb:start(),
     pg2:start(),
     gen_server:start(bb, [Trace], []).
 

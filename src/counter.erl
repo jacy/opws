@@ -15,4 +15,4 @@ reset(Type) ->
       type = Type,
       value = 0
      },
-    ok = db:write(Counter).
+    ok = mdb:write(Counter).

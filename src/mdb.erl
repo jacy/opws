@@ -1,6 +1,7 @@
 -module(mdb).
 
--export([dirty_read/2, dirty_index_read/3, update_balance/2, update_inplay/3, buy_in/3, read/2, write/1, find/8]).
+-export([dirty_read/2, dirty_index_read/3, update_balance/2, update_inplay/3, buy_in/3, read/2, write/1, find/8,
+		 start/0, wait_for_tables/2, clear_table/1,delete/2,find/1]).
 
 -include("common.hrl").
 -include("pp.hrl").
@@ -30,6 +31,15 @@
 
 %% 4. Dirty Operations
 %% 	The major advantage of dirty operations is that they execute much faster than equivalent operations that are processed as functional objects within a transaction.
+
+start() ->
+    mnesia:start().
+
+wait_for_tables(L, N) ->
+    mnesia:wait_for_tables(L, N).
+
+clear_table(T) ->
+    mnesia:clear_table(T).
 
 dirty_read(T, K) ->
 	mnesia:dirty_read(T, K).
@@ -100,6 +110,12 @@ re_abort(R) ->
 		Error -> mnesia:abort(Error)
 	end.
 
+delete(T, K) ->
+	F = fun() ->
+		mnesia:delete({T, K})
+	end,
+    transaction(F).
+
 read(T, K) ->
 	F = fun() ->
 		mnesia:read({T, K})
@@ -127,6 +143,28 @@ query_op(Arg, Op, Value)
         _ ->
             false
     end.
+
+makepat(Table)
+  when is_atom(Table) ->
+    Fields = mnesia:table_info(Table, attributes),
+    makepat(Fields, [Table]).
+
+makepat([], Acc) ->
+    list_to_tuple(lists:reverse(Acc));
+
+makepat([_H|T], Acc) ->
+    makepat(T, ['_'|Acc]).
+
+find(Pat) 
+  when is_tuple(Pat) ->
+    F = fun() -> mnesia:match_object(Pat) end,
+    mnesia:transaction(F);
+
+find(Table) 
+  when is_atom(Table) ->
+    Pat = makepat(Table),
+    find(Pat).
+
 
 find(GameType, LimitType,
      ExpOp, Expected, 
