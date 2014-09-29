@@ -14,7 +14,11 @@ mnesia_master() ->
 	schema:install(),
 	player:create(<<"jacy">>,<<"jacy">>,<<"JacyHong">>,<<"location_SG">>,10000),
 	player:create(<<"lena">>,<<"lena">>,<<"Lena">>,<<"location_SG">>,10000),
-	player:create(<<"hanhan">>,<<"hanhan">>,<<"HanHan">>,<<"location_SG">>,10000).
+	player:create(<<"hanhan">>,<<"hanhan">>,<<"HanHan">>,<<"location_SG">>,10000),
+
+	player:update_photo(1, <<"def_face_1">>),
+	player:update_photo(2, <<"def_face_2">>),
+	player:update_photo(3, <<"def_face_3">>).
 
 mnesia_slave([MasterNode]) when is_atom(MasterNode)->
 	?SET_LOG_FILE(),
