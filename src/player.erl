@@ -102,10 +102,11 @@ handle_cast(R = #unwatch{}, Data) ->
         true ->
 			case gb_trees:is_empty(Data#pdata.playing) of
 				true -> 
-				     do_nothing;
-			    _ -> gen_server:cast(Game, #leave{ player = self()})
+           			do_nothing;
+			    _ -> 
+					leave_games([Game])
 			end,
-            gen_server:cast(Game, R#unwatch{ player = self() }),
+			gen_server:cast(Game, R#unwatch{ player = self() }),
             Watching = gb_trees:delete(Game, Data#pdata.watching),
             {noreply, Data#pdata{ watching = Watching }};
         _ ->
@@ -120,7 +121,7 @@ handle_cast(#logout{}, Data) ->
             {noreply, Data};
         _ ->
             %% delay until we leave our last game
-            leave_games(Data, gb_trees:keys(Data#pdata.playing)),
+            leave_games(gb_trees:keys(Data#pdata.playing)),
             {noreply, Data#pdata{ zombie = 1 }}
     end;
 
@@ -388,15 +389,15 @@ inplay([Game|Rest], Total) ->
     Inplay = gen_server:call(Game, {'INPLAY', self()}),
     inplay(Rest, Total + Inplay).
 
-leave_games(_, []) ->
+leave_games([]) ->
     ok;
 
-leave_games(Data, [Game|Rest]) ->
+leave_games([Game|Rest]) ->
     gen_server:cast(Game, _ = #leave{ 
                             game = Game, 
                             player = self()
                            }),
-    leave_games(Data, Rest).
+    leave_games(Rest).
 
 get_nick(Player, Data) when is_pid(Player) ->
   case Player == self() of

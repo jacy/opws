@@ -1,5 +1,5 @@
 -module(blinds).
--export([start/3, small_blind/3, big_blind/3]).
+-export([start/3]).
 
 -include("texas.hrl").
 
@@ -38,50 +38,6 @@ start(Game, Ctx, [Type]) ->
       Ctx2 = Ctx1#texas{ b = Button, sb = hd(AllPlayers) },
       ask_for_blind(Game1, Ctx2, Ctx2#texas.sb, Ctx2#texas.sb_amt, small_blind)
   end.
-
-%% small blind state
-small_blind(Game, Ctx, #raise{ player = Player }) 
-  when Ctx#texas.exp_player /= Player ->
-    {continue, Game, Ctx};
-
-small_blind(Game, Ctx, R = #raise{ raise = Raise }) when Raise == 0.0 ->
-  post_sb(Game, Ctx, R);
-
-small_blind(Game, Ctx, R = #join{}) ->
-  join(Game, Ctx, R);
-
-small_blind(Game, Ctx, R = #leave{}) ->
-  leave(Game, Ctx, R, small_blind);
-
-small_blind(Game, Ctx, R) when 
-  is_record(R, sit_out); 
-  is_record(R, come_back) ->
-    {skip, Game, Ctx};
-
-small_blind(Game, Ctx, _Event) ->
-  {continue, Game, Ctx}.
-
-%%% big blind
-big_blind(Game, Ctx, #raise{ player = Player }) when 
-  Ctx#texas.exp_player /= Player ->
-    {continue, Game, Ctx};
-
-big_blind(Game, Ctx, R = #raise{ raise = Raise }) when Raise == 0.0 ->
-  post_bb(Game, Ctx, R);
-
-big_blind(Game, Ctx, R) when
-  is_record(R, sit_out); 
-  is_record(R, come_back) ->
-    {skip, Game, Ctx};
-
-big_blind(Game, Ctx, R = #join{}) ->
-  join(Game, Ctx, R);
-
-big_blind(Game, Ctx, R = #leave{}) ->
-  leave(Game, Ctx, R, big_blind);
-
-big_blind(Game, Ctx, _Event) ->
-  {continue, Game, Ctx}.
 
 %%
 %% Utility
@@ -159,25 +115,3 @@ post_bb(Game, Ctx, #raise{ player = Player, raise = 0.0 }) ->
 
   %% 结束盲注
   {stop, Game3, Ctx1}.
-
-join(Game, Ctx, R) ->
-  join(Game, Ctx, R, ?PS_MAKEUP_BB).
-
-join(Game, Ctx, R, State) ->
-  Game1 = g:join(Game, R#join{ state = State }),
-  {continue, Game1, Ctx}.
-
-leave(Game, Ctx, R, State) ->
-  Player = R#leave.player,
-  {Seat, _} = seat:get_seat(Game, Player),
-%%   PS = if
-%%     (State == big_blind) and (Seat == Ctx#texas.sb) ->
-%%       %% fold and leave next time 
-%%       %% a bet is requested from us
-%%       ?PS_CAN_LEAVE;
-%%     true ->
-%%       %% leave now
-%%       ?PS_GAMING
-%%   end,
-  Game1 = g:leave(Game, R),
-  {continue, Game1, Ctx}.

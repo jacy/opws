@@ -24,16 +24,12 @@ wait_for_players(Game, Ctx, {timeout, _, _}) ->
   end;
 
 wait_for_players(Game, Ctx, R = #join{}) ->
-  Game1 = g:join(Game, R#join { state = ?PS_PLAY }),
+  Game1 = seat:join(Game, R#join { state = ?PS_PLAY }),
   {continue, Game1, Ctx};
 
 wait_for_players(Game, Ctx, R = #leave{}) ->
-  ?FLOG("Wait for players got LEAVE EVENT=~w~n", [R]),
   Game1 = g:leave(Game, R),
   {continue, Game1, Ctx};
-
-wait_for_players(Game, Ctx, _R = #raise{}) ->
-  {continue, Game, Ctx};
 
 wait_for_players(Game, Ctx, _) ->
   {skip, Game, Ctx}.

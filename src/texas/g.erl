@@ -2,7 +2,7 @@
 
 -export([reset/1, broadcast/2, broadcast/3,
          notify_start_game/1, notify_cancel_game/1,
-         join/2, leave/2, kick/1, set_state/3,
+         leave/2, kick/1, set_state/3,
 		  setup/8, request_bet/5, process_autoplay/2,
          cancel_timer/1, restart_timer/2, 
          add_bet/3, new_stage/1, reset_player_state/3,
@@ -209,93 +209,7 @@ watch(R, Game) ->
   Obs = Game#game.observers,
   Game#game{ observers = [R#watch.player|Obs] }.
 
-get_empty_seat(Game) ->
-  get_empty_seat(Game#game.seats, 1).
 
-get_empty_seat(Seats, SeatNumber) when size(Seats) < SeatNumber -> 0;
-
-get_empty_seat(Seats, SeatNumber) ->
-  Seat = element(SeatNumber, Seats),
-  if
-    Seat#seat.state == ?PS_EMPTY ->
-      SeatNumber;
-    true ->
-      get_empty_seat(Seats, SeatNumber + 1)
-  end.
-
-join(Game, R) when R#join.amount > Game#game.max; R#join.amount < Game#game.min ->
-  Game;
-
-join(Game, R) when R#join.seat == 0 ->
-  AutoEmptySeat = get_empty_seat(Game),
-  case AutoEmptySeat of
-    0 ->
-      Game;
-    _ ->
-      join(Game, R#join {seat = AutoEmptySeat})
-  end;
-
-join(Game, R) ->
-  Seats = Game#game.seats,
-  XRef = Game#game.xref,
-  Seat = element(R#join.seat, Seats),
-  Player = R#join.player,
-  OurPlayer = gb_trees:is_defined(Player, XRef),
-  GID = Game#game.gid,
-  PID = R#join.pid,
-  if
-    %% seat is taken
-    Seat#seat.state /= ?PS_EMPTY ->
-      Game;
-    %% already sitting at this table
-    OurPlayer ->
-      Game;
-    true ->
-      %% move buy-in amount from balance to inplay
-      case mdb:buy_in(GID, PID, R#join.amount) of
-        ok ->
-          %% tell player
-          R1 = #notify_join{ 
-            game = GID, 
-            player = PID,
-            seat = R#join.seat,
-            amount = R#join.amount,
-            nick = gen_server:call(R#join.player, 'NICK QUERY'),
-            proc = self()
-          },
-          %% take seat and broadcast the fact
-          Game1 = do_join(Game, R, R#join.state),
-          broadcast(Game1, R1);
-        _Any ->
-          %% no money or other error
-          %% gen_server:cast(Player, {stop, Any}),
-          Game
-      end
-  end.
-
-do_join(Game, R, State) ->
-    Seats = Game#game.seats,
-    SeatNum = R#join.seat,
-    Seat = element(SeatNum, Seats),
-    Player = R#join.player,
-    XRef = Game#game.xref,
-    XRef1 = gb_trees:insert(Player, SeatNum, XRef),
-    %% remove from the list of observers
-    Observers = lists:delete(Player, Game#game.observers),
-    Game#game {
-      xref = XRef1,
-      seats = setelement(SeatNum,
-                         Seats,
-                         Seat#seat {
-                           player = Player,
-                           pid = R#join.pid,
-                           inplay = R#join.amount,
-                           state = State,
-                           hand = hand:new(Player, R#join.pid),
-                           cmd_que = []
-                          }),
-      observers = Observers
-     }.
 
 leave(Game, R) ->
   ?LOG([{g_leave, R}]),

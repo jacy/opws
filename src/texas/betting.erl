@@ -170,7 +170,7 @@ betting(Game, Ctx, R)
 
 %% Join
 betting(Game, Ctx, R = #join{}) ->
-  Game1 = g:join(Game, R#join{ state = ?PS_FOLD }),
+  Game1 = seat:join(Game, R#join{ state = ?PS_FOLD }),
   {continue, Game1, Ctx};
 
 %% Leave
