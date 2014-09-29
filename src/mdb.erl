@@ -79,16 +79,25 @@ update_inplay(GID, PID, ChangeAmount) ->
 buy_in(GID, PID, Amt) when is_number(GID),is_number(PID),is_number(Amt) ->
 	F = fun() ->
 			%% When a child transaction aborts, the caller of the child transaction will get the return value {aborted, Reason}
-			update_balance(PID, -Amt),
-			update_inplay(GID, PID, Amt)
+			re_abort(update_balance(PID, -Amt)),
+			re_abort(update_inplay(GID, PID, Amt))
 	end,
 	transaction(F).
 		   
 transaction(F) ->
-	case mnesia:transaction(F) of 
+	wrap_result(mnesia:transaction(F)).
+
+wrap_result(R) ->
+	case R of 
 		{atomic, V} -> V;
 		{aborted, {throw, Error}} -> Error;
 		{aborted, Reason} -> Reason
+	end.
+
+re_abort(R) ->
+	case R of 
+		ok -> ok;
+		Error -> mnesia:abort(Error)
 	end.
 
 read(T, K) ->

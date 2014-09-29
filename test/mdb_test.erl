@@ -46,7 +46,11 @@ all() ->
 	update_inplay_insufficient_balance(),
 	update_inplay_success(),
 	update_inplay_concurrent_from_exist_balance(),
-	update_inplay_concurrent_from_nonexist_balance().
+	update_inplay_concurrent_from_nonexist_balance(),
+	buyin_insufficent_balance_abort_all(),
+	buyin_insufficent_inplay_abort_all(),
+	buyin_success(),
+	buyin_concurrent().
  
 %%%%%%%%%%%%%%%%%%%%
 %%% ACTUAL TESTS %%%
@@ -155,6 +159,43 @@ update_inplay_concurrent_from_nonexist_balance() ->
 	[spawn(F) || _ <- lists:seq(1, Loop)],
 	barrier(Loop),
 	?assertEqual(10*Loop, get_inplay(K)).
+
+buyin_insufficent_balance_abort_all()->
+	K = {GID = 1, PID = erlang:phash2(buyin_insufficent_balance_abort_all, 1 bsl 32)},
+	create_balance(PID, 10),
+	create_inplay(K, 10),
+	?assertEqual({error, not_enough_money}, mdb:buy_in(GID, PID, 11)),
+	?assertEqual(10, get_balance(PID)),
+	?assertEqual(10, get_inplay(K)).
+
+buyin_insufficent_inplay_abort_all()->
+	K = {GID= 1, PID = erlang:phash2(buyin_insufficent_inplay_abort_all, 1 bsl 32)},
+	create_balance(PID, 10),
+	create_inplay(K, -11),
+	?assertEqual({error, not_enough_money}, mdb:buy_in(GID, PID, 10)),
+	?assertEqual(10, get_balance(PID)),
+	?assertEqual(-11, get_inplay(K)).
+
+buyin_success()->
+	K = {GID= 1, PID=erlang:phash2(buyin_success, 1 bsl 32)},
+	create_balance(PID, 10),
+	ok = mdb:buy_in(GID, PID, 10),
+	?assertEqual(0, get_balance(PID)),
+	?assertEqual(10, get_inplay(K)).
+
+buyin_concurrent() ->
+	K = {G = 1, P = erlang:phash2(buyin_concurrent, 1 bsl 32)},
+	create_balance(P, 10000),
+	
+	Self = self(),
+	F = fun() ->
+		mdb:buy_in(G, P, 10),
+		Self ! done
+	end,
+	[spawn(F) || _ <- lists:seq(1, 999)],
+	barrier(999),
+	?assertEqual(10, get_balance(P)),
+	?assertEqual(9990, get_inplay(K)).
 
 %%%%%%%%%%%%%%%%%%%%
 %%% Private %%%
