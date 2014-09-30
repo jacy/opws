@@ -3,7 +3,7 @@
 
 -export([blinds/2, raise/5]).
 
--include("../../common.hrl").
+-include("common.hrl").
 
 raise(Low, _, _, _, Stage) 
   when ?GS_PREFLOP == Stage; 

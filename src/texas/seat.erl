@@ -1,8 +1,8 @@
 -module(seat).
 -export([create_seats/1, get_seats/2, get_seats/3, get_seat/2, is_empty/1, seat_query/1, join/2]).
 
--include("../common.hrl").
--include("../pp.hrl").
+-include("common.hrl").
+-include("pp.hrl").
 -include("game.hrl").
 
 create_seats(SeatCount) ->

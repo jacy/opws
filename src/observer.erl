@@ -7,7 +7,6 @@
 -export([start/1, stop/1, observe/2]).
 
 -include("common.hrl").
--include("bot.hrl").
 -include("pp.hrl").
 
 -record(obs, {

@@ -1,18 +1,10 @@
-%%% Copyright (C) 2005-2008 Wager Labs, SA
-
 -define(FLOG(Msg), error_logger:info_msg(Msg)).
 -define(FLOG(Format, Data), error_logger:info_msg(Format,Data)).
 -define(LOG(L), error_logger:info_report([{debug, {module, ?MODULE}, {line, ?LINE}, {self, self()}},L])).
 -define(ERROR(L), error_logger:error_report([{debug, {module, ?MODULE}, {line, ?LINE}, {self, self()}},L])).
-%-define(LOG(L), ok).
-%-define(ERROR(L), ok).
-
-%%% 
 
 -define(MAX_RAISES, 3).
 -define(MAX_PLAYERS, 500000).
-
-%%%
 
 -define(GAME_SERVERS, 'GAME SERVERS').
 -define(MULTIBOTS, 'MULTIBOTS').
@@ -65,7 +57,8 @@
 %%% TEXAS Type
 
 -define(GT_TEXAS_HOLDEM, 0).
--define(GT_IRC_TEXAS, 1). % IRC poker db
+-define(GT_IRC_TEXAS, 1).% IRC poker db
+-define(GT_SIT_N_GO, 2). 
 
 %%% Limit type
 

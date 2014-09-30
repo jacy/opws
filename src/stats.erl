@@ -14,7 +14,6 @@
         ]).
 
 -include("common.hrl").
--include("ircdb.hrl").
 -include("pp.hrl").
 -include("schema.hrl").
 

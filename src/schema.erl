@@ -4,7 +4,7 @@
 %%% Database schema
 %%%
 
--export([install/1, install/0, populate/0,remove/1]).
+-export([install/1, install/0, remove/1]).
 
 -include("schema.hrl").
 -include("common.hrl").
@@ -30,7 +30,6 @@ install(Nodes) when is_list(Nodes) ->
     install_cluster_config(Nodes),
     install_game_config(Nodes),
     install_tourney_config(Nodes),
-    populate(),
     reset_counters(),
     ok.
 
@@ -126,12 +125,6 @@ install_counter(Nodes) ->
                              {type, set}, 
                              {attributes, record_info(fields, tab_counter)}
                             ]).
-
-populate() ->
-  g:setup(1, ?GC_TEXAS_HOLDEM, <<"5paw6JGh5Lqs5aib5qiC5aC0">>, ?GT_TEXAS_HOLDEM, 9,
-          #limit{ type = ?LT_NO_LIMIT, low = 5, high = 10, min = 100, max = 2000 },
-          ?START_DELAY, ?PLAYER_TIMEOUT). 
-
 reset_counters()->
     counter:reset(game),
     counter:reset(player),

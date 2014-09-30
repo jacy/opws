@@ -6,8 +6,8 @@
 -include("common.hrl").
 -include("pp.hrl").
 -include("schema.hrl").
--include("texas/game.hrl").
--include("texas/ctx.hrl").
+-include("game.hrl").
+-include("ctx.hrl").
 
 init() ->
   %Host = "192.168.1.102",

@@ -1,7 +1,7 @@
 -module(mdb_test).
--include("../src/common.hrl").
--include("../src/pp.hrl").
--include("../src/schema.hrl").
+-include("common.hrl").
+-include("pp.hrl").
+-include("schema.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -24,17 +24,10 @@ start_stop_test_() ->
 %%% SETUP FUNCTIONS %%%
 %%%%%%%%%%%%%%%%%%%%%%%
 start() ->
-	Nodes = [node()],
-	mnesia:stop(),
-	mnesia:delete_schema(Nodes),
-    mnesia:start(),
-	mnesia:create_schema(Nodes),
-	mnesia:create_table(tab_inplay, [{attributes, record_info(fields, tab_inplay)}]),
-	mnesia:create_table(tab_balance, [{attributes, record_info(fields, tab_balance)}]).
+	schema:install().
  
 stop(_) ->
-	mnesia:stop(),
-	mnesia:delete_schema(node()).
+	schema:remove([node()]).
 
 all() ->
 	update_balance_auto_create_record(),
