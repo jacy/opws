@@ -1,5 +1,3 @@
-%%% Copyright (C) 2005-2008 Wager Labs, SA
-
 -record(tab_counter, {
 					type,
 					value
