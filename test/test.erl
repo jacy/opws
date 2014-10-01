@@ -3,10 +3,11 @@
 -export([all/0]).
 -include("texas.hrl").
 
+%% 	whenever you ask EUnit to test the module m, it will also look for the module m_tests 
 all() ->
-	mdb_test:test(),
-    hand_test:test(),
-    pot_test:test().
+	mdb_tests:test(),
+	hand_tests:test(),
+	pot_tests:test().
 
 
             

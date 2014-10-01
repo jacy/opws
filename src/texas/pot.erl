@@ -4,11 +4,7 @@
          pend/4, pots/1, total/1, player_pending/2, new_side_pot/0 ]).
 
 
--export([add_bet/3, bet_amount/2, add_side_pot/3, new_side_pot/1, add_bet/4,split/3,sort_pending/1,from_pend_to_pot/1 ]). % For test
-
-%% -ifdef(TEST).
-%%    -include_lib("eunit/include/eunit.hrl").
-%% -endif.
+-export([add_bet/3, bet_amount/2, add_side_pot/3, new_side_pot/1, add_bet/4,from_pend_to_pot/1,sort_pending/1,split/3 ]). % For test
 
 -include("pot.hrl").
 

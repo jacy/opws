@@ -1,8 +1,7 @@
--module(mdb_test).
--include("common.hrl").
--include("pp.hrl").
--include("schema.hrl").
+-module(mdb_tests).
+
 -include_lib("eunit/include/eunit.hrl").
+-include("texas.hrl").
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% TESTS DESCRIPTIONS %%%

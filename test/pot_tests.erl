@@ -1,4 +1,4 @@
--module(pot_test).
+-module(pot_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("pot.hrl").

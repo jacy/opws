@@ -1,11 +1,7 @@
--module(hand_test).
+-module(hand_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("texas.hrl").
-
-%%%
-%%% Test suite
-%%%
 
 members(Members) ->
             members(Members, gb_trees:empty()).

@@ -5,10 +5,8 @@
 -export([make_card/1, make_card/2, make_cards/1, print_bin/1, 
          print_rep/1, to_string/1, player_hand/1, card_to_string/1, face_from_mask/1,
 		 winners/2]).
--export([make_rep/1, short/1, winners/3]). % For test
-%% -ifdef(TEST).
-%%    -include_lib("eunit/include/eunit.hrl").
-%% -endif.
+
+-export([make_rep/1, short/1, winners/3]). % Test
 
 -include("texas.hrl").
 
