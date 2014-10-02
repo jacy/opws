@@ -42,12 +42,14 @@ init([Trace]) ->
     pg2:create(?LAUNCHERS),
     pg2:get_members(?LAUNCHERS),
     ok = pg2:join(?LAUNCHERS, self()),
+	?LOG({"Started current group", pg2:which_groups()}),
     {ok, #bb{ trace = Trace }}.
 
 stop(Ref) ->
     gen_server:cast(Ref, stop).
 
-terminate(_Reason, _Data) ->
+terminate(Reason, _Data) ->
+	?ERROR([{"terminate bots", Reason}]),
     ok.
 
 handle_cast(stop, Data) ->
@@ -70,29 +72,15 @@ handle_cast({'LAUNCH', Parent, GID, Game, Host, Port, Trace}, Data)
     {noreply, Data};
 
 handle_cast(Event, Data) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {event, Event},
-                              {data, Data}
-                             ]),
+    ?ERROR([{event, Event}, {data, Data}]),
     {noreply, Data}.
 
 handle_call(Event, From, Data) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {event, Event},
-                              {from, From},
-                              {data, Data}
-                             ]),
+    ?ERROR([{event, Event}, {from, From}, {data, Data}]),
     {noreply, Data}.
 
 handle_info(Info, Data) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {message, Info}]),
+    ?ERROR([{message, Info}]),
     {noreply, Data}.
 
 code_change(_OldVsn, Data, _Extra) ->

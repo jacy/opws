@@ -220,7 +220,8 @@ start_bot_slaves(N) ->
     Args = common_args(),
     Node = start_slave_node(Name, Args),
     timer:sleep(100),
-    rpc:call(Node, bb, run, []),
+    R = rpc:call(Node, bb, run, []),
+	?LOG({"Remote call node:", Node , "! Got result:", R}),
     start_bot_slaves(N - 1).
 
 start_game_slaves(0) ->
@@ -234,23 +235,20 @@ start_game_slaves(N) ->
     rpc:call(Node, mb, run, []),
     start_game_slaves(N - 1).
 
-%%% Enable kernel poll and disable SMP. The latter is not obligatory.
-
 common_args() ->
-    "+K true -smp disable".
+	Path = code:get_path(),
+    "+K true -smp disable -pa " ++ string:join(Path, " ").
 
 start_slave_node(Name, Args) ->
     case slave:start_link(net_adm:localhost(), Name, Args) of
         {ok, Node} ->
             timer:sleep(1000),
-            %%mnesia:add_table_copy(schema, Node, ram_copies),
             rpc:call(Node, mnesia, start, []),
             rpc:call(Node, mnesia, change_config, [extra_db_nodes, [node()]]),
             timer:sleep(1000),
             Node;
         Reason ->
-            ?FLOG("Failed to start slave node: ~p. Retrying in 1 second.~n",
-                      [Reason]),
+            ?FLOG("Failed to start slave node: ~p. Retrying in 1 second.~n", [Reason]),
             timer:sleep(1000),
             start_slave_node(Name, Args)
     end.
@@ -260,9 +258,8 @@ start_slave_node(Name, Args) ->
 wait_for_group(Name) ->
     case pg2:get_members(Name) of
         {error, _} ->
-            ?FLOG("Group ~p is not available. Retrying in 1 second.~n",
-                      [Name]),
-            timer:sleep(1000),
+            ?FLOG("Group ~p is not available. Retrying in 1 second.~n", [Name]),
+            timer:sleep(10000),
             wait_for_group(Name);
         _ ->
             ok
