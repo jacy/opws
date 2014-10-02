@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 %%% 
-%%% Bot launcher 
+%%% Bot launcher
 %%%
 
 -compile([export_all]).

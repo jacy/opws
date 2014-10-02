@@ -34,8 +34,8 @@ start(Host, Port) ->
 start(Host, Port, TestMode) ->
     case gen_server:start(?MODULE, [Host, Port, TestMode], []) of
         {ok, Pid} ->
-            pg2:create(?GAME_SERVERS),
-            ok = pg2:join(?GAME_SERVERS, Pid),
+            pg2:create(?LOBBYS),
+            ok = pg2:join(?LOBBYS, Pid),
             {ok, Pid};
         Result ->
 			?ERROR([{start_lobby_faild, {unknow_result, Result}}]),

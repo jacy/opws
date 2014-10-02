@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 %%% 
-%%% Dumb bot implementation. 
+%%% Dumb bot implementation | Player Client
 %%% 
 
 -export([init/1, handle_call/3, handle_cast/2, 

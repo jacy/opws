@@ -42,7 +42,7 @@ start(Trace) ->
 
 init([Trace]) ->
     process_flag(trap_exit, true),
-    [Pid] = pg2:get_local_members(?GAME_SERVERS),
+    [Pid] = pg2:get_local_members(?LOBBYS),
     {Host, Port} = gen_server:call(Pid, 'WHERE'),
     pg2:create(?MULTIBOTS),
     ok = pg2:join(?MULTIBOTS, self()),
@@ -292,10 +292,10 @@ run() ->
     run(localhost, false).
 
 next_port(Host) ->
-    pg2:create(?GAME_SERVERS),
-    pg2:get_members(?GAME_SERVERS),
+    pg2:create(?LOBBYS),
+    pg2:get_members(?LOBBYS),
     timer:sleep(100),
-    case pg2:get_members(?GAME_SERVERS) of
+    case pg2:get_members(?LOBBYS) of
         {error, X} ->
             ?FLOG("next_port: ~p~n", [X]),
             3000;

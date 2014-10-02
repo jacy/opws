@@ -200,10 +200,10 @@ run(Games, GameServers, BotServers, Interval)
     ?FLOG("cluster: ~p~n", [nodes()]),
     wait_for_group(?LAUNCHERS),
     wait_for_group(?MULTIBOTS),
-    wait_for_group(?GAME_SERVERS),
+    wait_for_group(?LOBBYS),
     ?FLOG("bot launchers  : ~p~n", [pg2:get_members(?LAUNCHERS)]),
     ?FLOG("game launchers : ~p~n", [pg2:get_members(?MULTIBOTS)]),
-    ?FLOG("game servers   : ~p~n", [pg2:get_members(?GAME_SERVERS)]),
+    ?FLOG("lobbys   : ~p~n", [pg2:get_members(?LOBBYS)]),
     if 
         Interval =/= none ->
             stats:start(Interval);

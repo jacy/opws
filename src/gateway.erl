@@ -36,7 +36,7 @@ start(Node, Port, MaxPlayers) ->
     end.
 
 find_server(MaxPlayers) ->
-    case util:get_random_pid(?GAME_SERVERS) of 
+    case util:get_random_pid(?LOBBYS) of 
   {ok, Pid} when is_pid(Pid) ->
       {_Time, {Host, Port}} = timer:tc(gen_server, call, [Pid, 'WHERE']),
       Count = gen_server:call(Pid, 'USER COUNT'),
@@ -66,7 +66,7 @@ wait_for_game_servers(Tries) ->
     timer:sleep(100),
     case pg2:which_groups() of
         L when is_list(L) ->
-            case lists:member(?GAME_SERVERS, L) of
+            case lists:member(?LOBBYS, L) of
                 true ->
                     ok;
                 _ ->

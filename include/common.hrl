@@ -6,7 +6,7 @@
 -define(MAX_RAISES, 3).
 -define(MAX_PLAYERS, 500000).
 
--define(GAME_SERVERS, 'GAME SERVERS').
+-define(LOBBYS, 'LOBBYS').
 -define(MULTIBOTS, 'MULTIBOTS').
 -define(LAUNCHERS, 'LAUNCHERS').
 
