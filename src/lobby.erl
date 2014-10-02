@@ -5,7 +5,7 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([start/1, start/2, start/3, stop/1]).
+-export([start/1, start/2, start/4, stop/1]).
 
 -include("common.hrl").
 -include("pp.hrl").
@@ -13,12 +13,14 @@
 -record(server, {
           port,
           host,
-          test_mode
+          test_mode,
+		  protocol
          }).
 
 -record(client, {
           server = none,
-          player = none
+          player = none,
+		  protocol
          }).
 
 start([Port, Host])
@@ -29,10 +31,10 @@ start([Port, Host])
     start(Host1, Port1).
 
 start(Host, Port) ->
-    start(Host, Port, false).
+    start(Host, Port, false, websocket).
 
-start(Host, Port, TestMode) ->
-    case gen_server:start(?MODULE, [Host, Port, TestMode], []) of
+start(Host, Port, TestMode, Protocol) ->
+    case gen_server:start(?MODULE, [Protocol, Host, Port, TestMode], []) of
         {ok, Pid} ->
             pg2:create(?LOBBYS),
             ok = pg2:join(?LOBBYS, Pid),
@@ -42,24 +44,54 @@ start(Host, Port, TestMode) ->
             Result
     end.
 
-init([Host, Port, TestMode]) -> %% {{{ gen_server callback
+handle_data(Protocol, Socket, Packet, none) ->
+	parse_packet( Socket, Packet, #client{ server = self(), protocol=Protocol});
+	
+handle_data(_, Socket, Packet, Client) ->
+	parse_packet(Socket, Packet, Client).
+	
+init([P = websocket, Host, Port, TestMode]) ->
     process_flag(trap_exit, true), 
-    F = fun(Socket, Packet, LoopData) -> 
-        case LoopData of
-          none ->
-            parse_packet(Socket, Packet, #client{ server = self()});
-          {loop_data, Client} ->
-            parse_packet(Socket, Packet, Client)
-        end
-    end, 
     mochiweb_websocket:stop(Port),
-    {ok, _} = mochiweb_websocket:start(Host, Port, F),
+	F=fun(Socket, Packet, Client) ->
+			handle_data(P,Socket, Packet, Client)  
+	end,
+    {ok, _} = mochiweb_websocket:start(any, Port, F),
     Server = #server{
       host = Host,
       port = Port,
-      test_mode = TestMode
+      test_mode = TestMode,
+	  protocol=P
+     },
+    {ok, Server};
+
+init([P, Host, Port, TestMode]) ->
+    process_flag(trap_exit, true), 
+   	tcp_server:stop(Port),
+	F = fun(Sock) -> 
+				socket_request(Sock, #client{ server = self(), protocol= P}) 
+	end, 
+    {ok, _} = tcp_server:start_raw_server(Port, F, 32768, 32768),
+    Server = #server{
+      host = Host,
+      port = Port,
+      test_mode = TestMode,
+	  protocol=socket
      },
     {ok, Server}.
+
+socket_request(Socket, Client) ->
+	R = receive
+	    {tcp, Socket, Bin} ->
+	      {socket, Bin};
+	    {tcp_closed, Socket} ->
+	      tcp_closed;
+	    {packet, Packet} ->
+	      {packet, Packet}
+	end,
+
+	Client1 = handle_data(socket,Socket, R, Client),
+	socket_request(Socket, Client1).
 
 stop(Server) ->
     gen_server:cast(Server, stop).
@@ -118,7 +150,7 @@ code_change(_OldVsn, Server, _Extra) ->
 process_login(Client, Socket, Usr, Pass) ->
   case login:login(Usr, Pass, self()) of
     {error, Error} ->
-      ok = ?tcpsend(Socket, #bad{ cmd = ?CMD_LOGIN, error = Error}),
+      ok = ?tcpsend(Client#client.protocol, Socket, #bad{ cmd = ?CMD_LOGIN, error = Error}),
       Client;
     {ok, Player} ->
       if
@@ -129,7 +161,7 @@ process_login(Client, Socket, Usr, Pass) ->
           ok
       end,
       PID = gen_server:call(Player, 'ID'),
-      ok = ?tcpsend(Socket, #you_are{ player = PID }),
+      ok = ?tcpsend(Client#client.protocol, Socket, #you_are{ player = PID }),
       Client#client{ player = Player }
   end.
 
@@ -142,7 +174,7 @@ process_logout(Client, _Socket) ->
 	Client.
 
 process_ping(Client, Socket, R) ->
-    ok = ?tcpsend(Socket, #pong{ orig_send_time = R#ping.send_time }),
+    ok = ?tcpsend(Client#client.protocol, Socket, #pong{ orig_send_time = R#ping.send_time }),
     Client.
 
 process_pong(Client, _Socket, R) ->
@@ -153,14 +185,15 @@ process_pong(Client, _Socket, R) ->
 process_test_start_game(Client, Socket, R) ->
     case gen_server:call(Client#client.server, 'TEST MODE') of
         true ->
-            ok = ?tcpsend(Socket, start_test_game(R));
+            ok = ?tcpsend(Client#client.protocol, Socket, start_test_game(R));
         _ ->
             ok
     end,
     Client.
 
 process_game_query(Client, Socket, Q) when is_record(Q, game_query) ->
-    find_games(Socket, 
+    find_games(Client#client.protocol,
+			   Socket, 
                Q#game_query.game_type, 
                Q#game_query.limit_type,
                Q#game_query.expected,
@@ -191,8 +224,8 @@ parse_packet(Socket, {packet, close}, Client) ->
   Client#client{ player = none};
 	
 parse_packet(Socket, {packet, Packet}, Client) ->
-  ok = ?tcpsend(Socket, Packet),
-  {loop_data, Client};
+  ok = ?tcpsend(Client#client.protocol, Socket, Packet),
+  Client;
 
 parse_packet(Socket, {socket, Packet}, Client) ->
   gen_server:cast(Client#client.server, {'BUMP', size(Packet)}),
@@ -217,21 +250,22 @@ parse_packet(Socket, {socket, Packet}, Client) ->
     Event ->
       process_event(Client, Socket, Event)
   end,
-  {loop_data, Client1};
+  Client1;
 
 parse_packet(_Socket, Event, Client) ->
   ?LOG([{parse_packet, {event, Event}}]),
-  {loop_data, Client}.
+  Client.
 
-send_games(_, [], _) ->
+send_games(_,_, [], _) ->
     ok;
 
-send_games(Socket, [H|T], C) ->
+send_games(Protocol, Socket, [H|T], C) ->
     N = H#game_info{game_count = C},
-    ?tcpsend(Socket, N),
-    send_games(Socket, T, C).
+    ?tcpsend(Protocol, Socket, N),
+    send_games(Protocol, Socket, T, C).
 
-find_games(Socket, 
+find_games( Protocol,
+  			Socket, 
            GameType, LimitType,
            #query_op{ op = ExpOp, val = Expected }, 
            #query_op{ op = JoinOp, val = Joined },
@@ -241,7 +275,7 @@ find_games(Socket,
                          JoinOp, Joined,
                          WaitOp, Waiting),
     
-    send_games(Socket, L, lists:flatlength(L)).
+    send_games(Protocol, Socket, L, lists:flatlength(L)).
 
 start_test_game(R) ->
     {ok, _} = game:start(R),

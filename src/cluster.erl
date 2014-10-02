@@ -44,7 +44,7 @@ setup_games([MasterNode]) when is_atom(MasterNode)->
 %% ===========================================================================================================================================
 
 start_lobby() ->
-	lobby:start(['8002','192.168.1.10']).
+	lobby:start(['8002','lobby1']).
 
 
 %% The function call mnesia:del_table_copy(schema, mynode@host) deletes the node 'mynode@host' from the Mnesia system. 

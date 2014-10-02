@@ -4,7 +4,7 @@
 %%% OpenPoker protocol
 %%%
 
--export([read/1, write/1, test/0, send/3]).
+-export([read/1, write/1, send/3]).
 -export([id_to_player/1, id_to_game/1, id_to_tourney/1]).
 
 -include("common.hrl").
@@ -1068,19 +1068,15 @@ read(<<?CMD_PING, Bin/binary>>) ->
 read(<<?CMD_PONG, Bin/binary>>) ->
     unpickle(pong(), Bin).
 
-send(Socket, Data, _Ping) ->
+send(Protocol, Socket, Data) ->
   Bin = list_to_binary(write(Data)),
-  
-  [Cmd|_] = tuple_to_list(Data),
-  case Cmd of
-    seat_state -> opps;
-    pong -> opps;
-    _ ->
-      opps
-      %?LOG([{'>>>>>>>>', {data, Data}, {bin, Bin}}])
-  end,
-  %%?FLOG("SND ~p~n", [Bin]),
-  case catch gen_tcp:send(Socket, websocket:encoding(Bin)) of
+  Bin1 = if Protocol == websocket
+			  -> 
+				websocket:encoding(Bin);
+			true ->
+				Bin
+		end,
+  case catch gen_tcp:send(Socket, Bin1) of
     ok ->
       ok;
     {error, closed} ->
@@ -1096,34 +1092,3 @@ send(Socket, Data, _Ping) ->
           {error, Any}
         ])
   end.
-%%ping(Socket, size(Bin), Ping).
-
-ping(_, _, false) ->
-    ok;
-
-ping(Socket, _Size, true) ->
-    Bin = list_to_binary(write(#ping{})),
-    case catch gen_tcp:send(Socket, Bin) of
-        ok ->
-            ok;
-        {error, closed} ->
-            ok;
-        {error,econnaborted} ->
-            ok;
-        Any ->
-            error_logger:error_report([
-                                       {message, "gen_tcp:ping error"},
-                                       {module, ?MODULE}, 
-                                       {line, ?LINE},
-                                       {socket, Socket}, 
-                                       {port_info, erlang:port_info(Socket, connected)},
-                                       {bin, Bin},
-                                       {error, Any}
-                                      ])
-    end,
-    %%stats:sum(packets_out, 2),
-    %%stats:sum(bytes_out, Size + size(Bin)),
-    ok.
-
-test() ->
-    ok.

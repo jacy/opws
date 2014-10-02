@@ -234,7 +234,7 @@ send(Bot, [H|T]) ->
     send(Bot, T);
 
 send(Socket, Event) ->
-    case catch ?tcpsend1(Socket, Event) of 
+    case catch ?tcpsend(socket, Socket, Event) of 
         {'EXIT', Error} ->
             error_logger:error_report([{module, ?MODULE}, 
                                        {line, ?LINE},

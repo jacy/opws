@@ -284,7 +284,7 @@ run(Host, TestMode) ->
     pg2:start(),
     Port = next_port(Host),
     ?FLOG("~p: game server on port ~p~n", [node(), Port]),
-    server:start(Host, Port, TestMode),
+    lobby:start(Host, Port, TestMode, socket),
     {ok, _} = start(TestMode),
     ok.
 

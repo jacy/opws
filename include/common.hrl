@@ -224,5 +224,4 @@
 								end
 				end()).
 
--define(tcpsend1(Socket, Data), pp:send(Socket, Data, false)).
--define(tcpsend(Socket, Data), pp:send(Socket, Data, true)).
+-define(tcpsend(Protocol, Socket, Data), pp:send(Protocol, Socket, Data)).
