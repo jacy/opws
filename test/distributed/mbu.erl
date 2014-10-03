@@ -28,6 +28,7 @@ create_players() ->
     create_players(DB, Key).
 
 create_players(DB, '$end_of_table') ->
+	?LOG({"--------END OF TABLE--------"}),
     closedb(DB);
 
 create_players(DB, Key) ->
@@ -55,7 +56,7 @@ create_players([Player|Rest])
             mdb:delete(tab_balance, PID),
             mdb:update_balance(PID, Balance);
         [] ->
-            player:create(Usr, <<"foo">>, <<"">>, Balance)
+			player:create(Usr,<<"foo">>,Usr,<<"">>, Balance)
     end,
     create_players(Rest).
 

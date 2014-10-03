@@ -51,7 +51,8 @@ init([Trace]) ->
 stop(Ref) ->
     gen_server:cast(Ref, stop).
 
-terminate(_Reason, _Data) ->
+terminate(Reason, _Data) ->
+	?ERROR({terminate, Reason}),
     ok.
 
 handle_cast(stop, Data) ->
@@ -97,22 +98,11 @@ handle_cast({'RUN', Game, Barrier, Delay, Trace}, Data)
     {noreply, Data1};
 
 handle_cast(Event, Data) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {event, Event},
-                              {data, Data}
-                             ]),
+    ?ERROR([{event, Event}, {data, Data}]),
     {noreply, Data}.
 
 handle_call(Event, From, Data) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {event, Event},
-                              {from, From},
-                              {data, Data}
-                             ]),
+    ?ERROR([{event, Event}, {from, From}, {data, Data}]),
     {noreply, Data}.
 
 handle_info({'START', _GID}, Data) ->
@@ -210,11 +200,13 @@ handle_info({'CANCEL', GID}, Data) ->
 handle_info({'CARDGAME EXIT', _, _}, Data) ->
     {noreply, Data};
 
+
+handle_info({'DOWN', _Ref, process, _Pid,  Reason}, Data) ->
+    ?ERROR([{"Child Exit With Reason:",Reason}]),
+    {noreply, Data};
+
 handle_info(Info, Data) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {message, Info}]),
+    ?ERROR([{message, Info}]),
     {noreply, Data}.
 
 code_change(_OldVsn, Data, _Extra) ->
@@ -325,15 +317,18 @@ start_game(G, Delay, Barrier)
   when is_record(G, irc_game) ->
     Cmd = #start_game{
       id=g:uuid(),
+	  game_code=?GC_TEXAS_HOLDEM,
 	  table_name = <<"test games">>,
-      type = ?GT_IRC_TEXAS,
-      limit = #limit{ type = ?LT_FIXED_LIMIT, high = 20, low = 10 },
+      type = ?GT_TEXAS_HOLDEM,
+      limit = #limit{ type = ?LT_FIXED_LIMIT, high = 20, low = 10, min = 100, max = 2000 },
       seat_count = G#irc_game.player_count,
       required = G#irc_game.player_count,
       start_delay = Delay,
       rigged_deck = rig_deck(G),
+	  cbk=?GC_TEXAS_HOLDEM,
       barrier = Barrier
      },
-    {ok, Game} = g:make(Cmd),
+    {ok, Game} = exch:start([Cmd]),
+	erlang:monitor(process,Game),
     {ok, gen_server:call(Game, 'ID')}.
 

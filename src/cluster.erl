@@ -7,8 +7,6 @@
 -include("schema.hrl").
 -include("pp.hrl").
 
--define(SET_LOG_FILE(), error_logger:logfile({open, "/tmp/elog/" ++ atom_to_list(node()) ++ ".log"})).
-
 mnesia_master() ->
 	?SET_LOG_FILE(),
 	schema:install(),

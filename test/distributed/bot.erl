@@ -126,22 +126,11 @@ handle_cast(stop, Bot) ->
     {stop, normal, Bot};
 
 handle_cast(Event, Bot) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {data, Bot},
-                              {message, Event}
-                             ]),
+    ?LOG([{data, Bot},{message, Event}]),
     {noreply, Bot}.
 
 handle_call(Event, From, Bot) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {data, Bot},
-                              {message, Event},
-                              {from, From}
-                             ]),
+    ?LOG([{data, Bot},{message, Event}, {from, From}]),
     {noreply, Bot}.
 
 handle_info({tcp_closed, _}, Bot) ->
@@ -157,16 +146,12 @@ handle_info({tcp, _Socket, Bin}, Bot) ->
             dispatch(Event, Bot)
     end;
 
-handle_info({'EXIT', _Pid, _Reason}, Bot) ->
-    %% child exit?
+handle_info({'EXIT', _Pid, Reason}, Bot) ->
+	?FLOG("Child Exit:~w",[Reason]),
     {noreply, Bot};
 
 handle_info(Info, Bot) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {message, Info}
-                             ]),
+    ?ERROR({message, Info}),
     {noreply, Bot}.
 
 code_change(_OldVsn, Bot, _Extra) ->
@@ -236,12 +221,7 @@ send(Bot, [H|T]) ->
 send(Socket, Event) ->
     case catch ?tcpsend(socket, Socket, Event) of 
         {'EXIT', Error} ->
-            error_logger:error_report([{module, ?MODULE}, 
-                                       {line, ?LINE},
-                                       {self, self()}, 
-                                       {message, Event}, 
-                                       {error, Error}
-                                      ]),
+           ?ERROR([{message, Event}, {error, Error}]),
             none;
         Other ->
             Other

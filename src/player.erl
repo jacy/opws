@@ -438,6 +438,7 @@ get_photo(_, _) ->
 %%     mdb:update_balance(PID, Amount).
 
 forward_to_client(Event, Data) ->    
+  ?FLOG("send2client:~w",[Event]),
   if 
     Data#pdata.socket /= none ->
       Data#pdata.socket ! {packet, Event};

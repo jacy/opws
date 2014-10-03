@@ -225,3 +225,4 @@
 				end()).
 
 -define(tcpsend(Protocol, Socket, Data), pp:send(Protocol, Socket, Data)).
+-define(SET_LOG_FILE(), error_logger:logfile({open, "/tmp/elog/" ++ atom_to_list(node()) ++ util:nowstring() ++".log"})).

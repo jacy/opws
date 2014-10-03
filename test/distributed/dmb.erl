@@ -193,6 +193,7 @@ run(Games, GameServers, BotServers, Interval)
   when is_integer(Games),
        is_integer(GameServers),
        is_integer(BotServers) ->
+	?SET_LOG_FILE(),
     mdb:start(),
     pg2:start(),
     start_bot_slaves(BotServers),
@@ -237,7 +238,7 @@ start_game_slaves(N) ->
 
 common_args() ->
 	Path = code:get_path(),
-    "+K true -smp disable -pa " ++ string:join(Path, " ").
+    "+K true -smp disable -pz " ++ string:join(Path, " ").
 
 start_slave_node(Name, Args) ->
     case slave:start_link(net_adm:localhost(), Name, Args) of
