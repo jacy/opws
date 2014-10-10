@@ -29,15 +29,15 @@ start([R = #start_game{id = GID}]) ->
       required_player_count = R#start_game.required,
       timeout = R#start_game.player_timeout,
 	  start_delay = R#start_game.start_delay,
-      tourney = none
+      tourney = none,
+	  barrier=R#start_game.barrier
      },
     {Game, R}.
 
 modules([R= #start_game{type=Type}]) ->
     case Type of
        ?GT_IRC_TEXAS ->
-           irc_texas_mods(R#start_game.start_delay,
-                          R#start_game.barrier);
+           irc_texas_mods(R#start_game.barrier);
        ?GT_TEXAS_HOLDEM ->
            texas_holdem_mods() 
    end.
@@ -160,7 +160,8 @@ core_texas_mods() ->
      {betting, [?MAX_RAISES, ?GS_RIVER]}, 
      %% showdown
      {showdown, []},
-     {delay, []} % delay according to winner counts
+     {delay, []}, % delay according to winner counts
+     {end_game, []}
     ].
      
 texas_holdem_mods() ->
@@ -168,7 +169,7 @@ texas_holdem_mods() ->
         ++ core_texas_mods() 
         ++ [ {restart, []} ].
 
-irc_texas_mods(StartDelay, Barrier) ->
+irc_texas_mods(Barrier) ->
     %% irc texas differs slightly in application of button 
     %% rules as well as the number of raises allowed
     Mods = [
@@ -191,16 +192,16 @@ irc_texas_mods(StartDelay, Barrier) ->
             %% river
             {betting, [100, ?GS_RIVER]}, 
             %% showdown
-            {showdown, []}
+            {showdown, []},
+            {end_game, []}
            ],
     if 
         is_pid(Barrier) ->
             %% all games run together
-            [{game_start, [Barrier]}|Mods]
-                ++ [{delayed_exit, []}];
+            [{game_start, []}|Mods]
+                 ++ [ {delay, [5000]} ];
         true ->
             %% start delay
-            [{game_wait_players, [StartDelay]}|Mods]
+            [{wait_players, []}| Mods]
                 ++ [{restart, []}]
     end.
-

@@ -98,11 +98,7 @@ handle_call('INPLAY', _From, Data) ->
     {reply, 0, Data};
 
 handle_call(Event, From, Data) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {message, Event}, 
-                              {from, From}]),
+    ?LOG([{message, Event}, {from, From}]),
     {noreply, Data}.
 
 handle_info({'EXIT', _Pid, _Reason}, Data) ->
@@ -110,22 +106,8 @@ handle_info({'EXIT', _Pid, _Reason}, Data) ->
     {noreply, Data};
 
 handle_info(Info, Data) ->
-    error_logger:info_report([{module, ?MODULE}, 
-                              {line, ?LINE},
-                              {self, self()}, 
-                              {message, Info}]),
+    ?LOG([{message, Info}]),
     {noreply, Data}.
 
 code_change(_OldVsn, Data, _Extra) ->
     {ok, Data}.
-
-%%%
-%%% Test suite
-%%%
-
-test() ->
-    ok.
-
-
-
-

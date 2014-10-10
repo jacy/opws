@@ -7,8 +7,8 @@
 -define(MAX_PLAYERS, 500000).
 
 -define(LOBBYS, 'LOBBYS').
--define(MULTIBOTS, 'MULTIBOTS').
--define(LAUNCHERS, 'LAUNCHERS').
+-define(GAME_LAUNCHERS, 'GAME_LAUNCHERS').
+-define(PLAYER_LAUNCHERS, 'PLAYER_LAUNCHERS').
 
 %%% Global stats server
 
@@ -225,4 +225,4 @@
 				end()).
 
 -define(tcpsend(Protocol, Socket, Data), pp:send(Protocol, Socket, Data)).
--define(SET_LOG_FILE(), error_logger:logfile({open, "/tmp/elog/" ++ atom_to_list(node()) ++ util:nowstring() ++".log"})).
+-define(SET_LOG_FILE(), error_logger:logfile({open, "/tmp/elog/" ++ atom_to_list(node()) ++ "_" ++ util:nowstring()})).

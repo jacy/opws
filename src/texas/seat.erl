@@ -107,6 +107,7 @@ get_empty_seat(Seats, SeatNumber) ->
   end.
 
 join(Game, R) when R#join.amount > Game#game.max; R#join.amount < Game#game.min ->
+  ?ERROR({invalid_join_amount, R#join.amount}),
   Game;
 
 join(Game, R) when R#join.seat == 0 ->
@@ -149,9 +150,10 @@ join(Game, R) ->
           %% take seat and broadcast the fact
           Game1 = do_join(Game, R, R#join.state),
           broadcast(Game1, R1);
-        _Any ->
+        Error ->
           %% no money or other error
           %% gen_server:cast(Player, {stop, Any}),
+		  ?ERROR({buy_in_fail, Error}),
           Game
       end
   end.

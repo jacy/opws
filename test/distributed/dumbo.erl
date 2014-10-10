@@ -19,6 +19,7 @@
          }).
 
 start([Actions, GamesToPlay]) ->
+	?LOG([{"ACTIONS:",Actions}]),
     {Filters, Actions1} = extract_filters(Actions),
     Data = #dumbo{ 
       actions = Actions1,
@@ -28,12 +29,14 @@ start([Actions, GamesToPlay]) ->
     {ok, filter, Data}.
 
 stop(_) ->
+	?FLOG("Stop dumbo:~w",[node()]),
     ok.
 
 filter(R, Data) ->
     filter(R, Data, Data#dumbo.filters).
 
 filter(R, Data, [H|T]) ->
+	?LOG([{filter, H}]),
     case H(R, Data) of
         {skip, Data1} ->
             filter(R, Data1, T);
@@ -70,9 +73,10 @@ play(#notify_end_game{}, Data) ->
     {continue, Data#dumbo{ games_to_play = N }, []};
 
 play(R = #bet_req{}, Data = #dumbo{ actions = [H|T] }) ->
+	?LOG([{bet_req},{H}]),
     react(R, H, Data#dumbo{ actions = T });
 
-play(_, Data) ->
+play(_E, Data) ->
     {skip, Data}.
 
 %%% Handle old actions
@@ -135,7 +139,7 @@ react(#bet_req{ game = GID, call = Call }, 'RAISE ALL', Data) ->
     Data1 = Data#dumbo{ inplay = 0 },
     {continue, Data1, [#raise{ game = GID, raise = Data#dumbo.inplay - Call }]};
 
-react(_, _, Data) ->
+react(_E, _A, Data) ->
     {skip, Data}.
 
 %%% 

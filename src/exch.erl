@@ -109,6 +109,10 @@ advance(Exch = #exch{}, _, {next, NextState, Data, Ctx}) ->
 advance(Exch= #exch{callback=Cbk}, Event, {skip, Data, Ctx}) ->
   {noreply, Exch#exch{ data = Cbk:cast(Event, Ctx, Data)}};
 
+%% stop game server for irc games.
+advance(Exch = #exch{ stack = [_LastMod] }, _, {stop, Data, _Ctx}) ->
+    {stop, normal, Exch#exch{ data = Data, stack = [] }};
+
 advance(Exch = #exch{ stack = [_|NextMod] }, Event, {stop, Data, Ctx}) ->
     Exch1 = Exch#exch{ data = Data, ctx = Ctx, stack = NextMod },
     fsm_init(Exch1, Event);

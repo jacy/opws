@@ -39,7 +39,7 @@ debug(GameID) ->
       max_games = 1,
       start_delay = 1000,
       barrier = undefined,
-      started = length(pg2:get_members(?MULTIBOTS))
+      started = length(pg2:get_members(?GAME_LAUNCHERS))
      },
     Data1 = test(DB, GameID, 1, 0, Data),
     ?FLOG("dmb: waiting for games to end...~n"),
@@ -72,17 +72,15 @@ test(MaxGames, Delay, Trace)
     ?FLOG("Simulating gameplay with ~p games...~n", [MaxGames]),
     DB = mbu:opendb(),
     Key = dets:first(DB),
-    %% will reset the target once we know 
-    %% the total player count for the games
-    %% that we are starting.
-    {ok, Barrier} = barrier:start(counter, 99999999999),
+
+	{ok, Barrier} = barrier:start(counter, MaxGames), %% starts games at the same time
     Data = #dmb{
       start_time = now(),
       trace = Trace,
       max_games = MaxGames,
       start_delay = Delay,
       barrier = Barrier,
-      started = length(pg2:get_members(?MULTIBOTS))
+      started = length(pg2:get_members(?GAME_LAUNCHERS))
      },
     ?FLOG("== DB ~p~n", [DB]),
     ?FLOG("== Key ~p~n", [Key]),
@@ -102,13 +100,13 @@ test(DB, '$end_of_table', _, N, Data) ->
     mbu:closedb(DB),
     Data;
 
-test(DB, _, 0, N, Data) ->
+test(DB, _Key, 0, N, Data) ->
     go(Data#dmb.barrier, N),
     mbu:closedb(DB),
     Data;
 
-test(DB, Key, N, Max, Data) ->
-    {ok, Mb} = util:get_random_pid(?MULTIBOTS),
+test(DB, Key, Max, N, Data) ->
+    {ok, Mb} = util:get_random_pid(?GAME_LAUNCHERS),
     [Game] = dets:lookup(DB, Key),
     Delay = Data#dmb.start_delay,
     Trace = Data#dmb.trace,
@@ -120,19 +118,19 @@ test(DB, Key, N, Max, Data) ->
              },
     if
         (Data1#dmb.game_count rem 50) == 0 ->
-            ?FLOG("~w games started, ~w players~n", 
-                      [Data1#dmb.game_count, Data1#dmb.player_count]);
+            ?FLOG("~w games started, ~w players~n", [Data1#dmb.game_count, Data1#dmb.player_count]);
         true ->
             ok
     end,
     link(Mb),
     Key1 = dets:next(DB, Key),
-    test(DB, Key1, N - 1, Max + 1, Data1).
+    test(DB, Key1, Max - 1, N + 1, Data1).
 
 %%% Wait for started games to finish
 
 wait_for_games(Data)
   when is_record(Data, dmb) ->
+	?FLOG("wait_for_games with dmb: ~p~n", [dmb]),
     receive
         {'EXIT', _, Reason} ->
             Data1 = Data#dmb{ finished = Data#dmb.finished + 1 },
@@ -150,16 +148,14 @@ wait_for_games(Data)
                     wait_for_games(Data2)
             end;
         Other ->
-            ?FLOG("wait_for_games: ~p~n", [Other]),
+            ?FLOG("wait_for_games, receive other message: ~p~n", [Other]),
             wait_for_games(Data)
     end,
     T1 = Data#dmb.start_time,
     T2 = erlang:now(),
     Elapsed = timer:now_diff(T2, T1) / 1000 / 1000,
-    ?FLOG("dmb: exited successfully, ~w seconds elapsed~n", 
-              [Elapsed]).
-
-%%% Setup the database for running tests
+	timer:sleep(5000), % make sure other logs not showing up anymore.
+    ?FLOG("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]).
 
 setup() ->
     schema:install(),
@@ -167,7 +163,6 @@ setup() ->
     timer:sleep(1000).
 
 %%% Delete the results of a previous test run
-
 cleanup() ->
     mdb:start(),
     case mdb:wait_for_tables([tab_game_config], 10000) of 
@@ -183,27 +178,27 @@ cleanup() ->
     end,
     ok.
 
-%%% Launch a given number of slave VMs (GameServers, BotServers)
+%%% Launch a given number of slave VMs (Lobbys, BotServers)
 %%% and then run #Games on them. Works well on a multicore server.
 
-run(Games, GameServers, BotServers) ->
-    run(Games, GameServers, BotServers, none).
+run(Games, Lobbys, BotServers) ->
+    run(Games, Lobbys, BotServers, none).
 
-run(Games, GameServers, BotServers, Interval) 
+run(Games, Lobbys, BotServers, Interval) 
   when is_integer(Games),
-       is_integer(GameServers),
+       is_integer(Lobbys),
        is_integer(BotServers) ->
 	?SET_LOG_FILE(),
     mdb:start(),
     pg2:start(),
     start_bot_slaves(BotServers),
-    start_game_slaves(GameServers),
+    start_game_slaves(Lobbys),
     ?FLOG("cluster: ~p~n", [nodes()]),
-    wait_for_group(?LAUNCHERS),
-    wait_for_group(?MULTIBOTS),
+    wait_for_group(?PLAYER_LAUNCHERS),
+    wait_for_group(?GAME_LAUNCHERS),
     wait_for_group(?LOBBYS),
-    ?FLOG("bot launchers  : ~p~n", [pg2:get_members(?LAUNCHERS)]),
-    ?FLOG("game launchers : ~p~n", [pg2:get_members(?MULTIBOTS)]),
+    ?FLOG("player launchers  : ~p~n", [pg2:get_members(?PLAYER_LAUNCHERS)]),
+    ?FLOG("game launchers : ~p~n", [pg2:get_members(?GAME_LAUNCHERS)]),
     ?FLOG("lobbys   : ~p~n", [pg2:get_members(?LOBBYS)]),
     if 
         Interval =/= none ->
@@ -229,7 +224,7 @@ start_game_slaves(0) ->
     ok;
 
 start_game_slaves(N) ->
-    Name = list_to_atom("game" ++ integer_to_list(N)),
+    Name = list_to_atom("lobby" ++ integer_to_list(N)),
     Args = common_args(),
     Node = start_slave_node(Name, Args),
     timer:sleep(100),
@@ -260,7 +255,7 @@ wait_for_group(Name) ->
     case pg2:get_members(Name) of
         {error, _} ->
             ?FLOG("Group ~p is not available. Retrying in 1 second.~n", [Name]),
-            timer:sleep(10000),
+            timer:sleep(1000),
             wait_for_group(Name);
         _ ->
             ok
@@ -281,7 +276,3 @@ procs() ->
                 {Name, {Heap, Stack}}
         end,
     lists:reverse(lists:keysort(2, lists:map(F, processes()))).
-
-
-
-

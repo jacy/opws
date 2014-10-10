@@ -189,7 +189,7 @@ watch(Game, Ctx, R) ->
   },
 
   gen_server:cast(R#watch.player, Detail),
-  notify_player_state(R#watch.player, Game),
+%%   notify_player_state(R#watch.player, Game),
   
   if Ctx#texas.stage < ?GS_FLOP 
 		-> ok ;
@@ -269,6 +269,7 @@ kick(_, _, 0) ->
 
 kick(Game, Seats, N) ->
     Seat = element(N, Seats),
+	?FLOG("Kicking player pid=~w",[Seat#seat.pid]),
     Player = Seat#seat.player,
     Game2 = case Player of 
                 none ->

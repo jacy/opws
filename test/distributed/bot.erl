@@ -8,7 +8,7 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([start/4, stop/1, send/2, watch/2, join/6]).
+-export([start/4, stop/1, send/2, watch/2, login/6]).
 
 -include("common.hrl").
 -include("pp.hrl").
@@ -42,12 +42,12 @@ watch(Bot, Game)
        is_integer(Game) ->
     gen_server:cast(Bot, {'WATCH', Game}).
 
-join(Bot, Game, Usr, Pass, Seat, BuyIn) 
+login(Bot, Game, Usr, Pass, Seat, BuyIn) 
   when is_pid(Bot),
        is_integer(Game),
        is_integer(Seat),
        is_number(BuyIn) ->
-    gen_server:cast(Bot, {'JOIN', Game, Usr, Pass, Seat, BuyIn}).
+    gen_server:cast(Bot, {'LOGIN', Game, Usr, Pass, Seat, BuyIn}).
 
 %%%
 %%% OTP
@@ -57,7 +57,8 @@ init([Host, Port, Mod, Args]) ->
     process_flag(trap_exit, true),
     {ok, State, Data} = Mod:start(Args),
     Event = {'CONNECT', Host, Port},
-    erlang:send_after(0, self(), {'$gen_cast', Event}),
+%% 	cast and info are handled exactly the same internally, except the cast ones are wrapped in a tuple with $gen_cast
+    erlang:send_after(0, self(), {'$gen_cast', Event}), % dispatch to handle_cast event
     Bot = #bot{ 
       mod = Mod,
       args = Args,
@@ -97,13 +98,11 @@ handle_cast(Event = {'CONNECT', Host, Port}, Bot) ->
             {noreply, Bot#bot{ connect_attempts = N + 1 }}
     end;
 
-handle_cast({'WATCH', GID}, Bot)
-  when Bot#bot.socket /= undefined ->
+handle_cast({'WATCH', GID}, Bot)  when Bot#bot.socket /= undefined ->
     ok = send(Bot#bot.socket, #watch{ game = GID }),
     {noreply, Bot#bot{ gid = GID, no_join = true }};
 
-handle_cast({'JOIN', GID, Usr, Pass, Seat, BuyIn}, Bot)
-  when Bot#bot.socket /= undefined ->
+handle_cast({'LOGIN', GID, Usr, Pass, Seat, BuyIn}, Bot) when Bot#bot.socket /= undefined ->
     Sock = Bot#bot.socket,
     ok = send(Sock, #login{ usr = Usr, pass = Pass }),
     Bot1 = Bot#bot{ 
@@ -117,8 +116,8 @@ handle_cast({'JOIN', GID, Usr, Pass, Seat, BuyIn}, Bot)
 
 handle_cast(Event, Bot)
   when element(1, Event) == 'WATCH';
-       element(1, Event) == 'JOIN' ->
-    %% we haven't connected to the server yet
+       element(1, Event) == 'LOGIN' ->
+    %% Bot#bot.socket is still null
     erlang:send_after(500, self(), {'$gen_cast', Event}),
     {noreply, Bot};
 
@@ -138,6 +137,8 @@ handle_info({tcp_closed, _}, Bot) ->
     Mod:stop(Bot#bot.data),
     {stop, normal, Bot};
 
+
+% Handle message got from server
 handle_info({tcp, _Socket, Bin}, Bot) ->
     case pp:read(Bin) of
         none ->
@@ -175,9 +176,11 @@ dispatch(R = #you_are{}, Bot) ->
     stats:add(total_bots_connected, 1),
     dispatch_not_handled(R, Bot#bot{ pid = R#you_are.player });
 
-dispatch(#notify_cancel_game{ game = GID }, Bot)
+
+% Got event after succefully watch
+dispatch(#notify_game_detail{ game = GID }, Bot)
   when Bot#bot.gid == GID,
-Bot#bot.no_join == false ->
+	Bot#bot.no_join == false ->
     Join = #join{ 
       game = Bot#bot.gid,
       player = Bot#bot.pid,
@@ -187,7 +190,9 @@ Bot#bot.no_join == false ->
     ok = send(Bot#bot.socket, Join),
     {noreply, Bot};
 
-dispatch(R = #notify_join{}, Bot) ->
+dispatch(R = #notify_join{}, Bot) 
+  when  R#notify_join.player == Bot#bot.pid ->
+	?LOG([{notify_join, R}]),
     dispatch_not_handled(R, Bot#bot{ no_join = true });
 
 dispatch(Event, Bot) ->
@@ -196,6 +201,7 @@ dispatch(Event, Bot) ->
 dispatch_not_handled(Event, Bot) ->
     Mod = Bot#bot.mod,
     State = Bot#bot.state,
+	?LOG([{mod, Mod},{state, State},{event, Event}]),
     case Mod:State(Event, Bot#bot.data) of
         {stop, _, Events} ->
             send(Bot, Events),
@@ -204,6 +210,7 @@ dispatch_not_handled(Event, Bot) ->
             send(Bot, Events),
             {noreply, Bot#bot{ state = State1, data = Data1 }};
         {continue, Data1, Events} ->
+			?LOG([{client_sending_event},{event, Events}]),
             send(Bot, Events),
             {noreply, Bot#bot{ data = Data1 }};
         {skip, Data1} ->

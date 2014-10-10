@@ -13,8 +13,6 @@
 -include("pp.hrl").
 -include("schema.hrl").
 
-%% test
-
 -record(mb, {
           host, 
           port,
@@ -44,8 +42,8 @@ init([Trace]) ->
     process_flag(trap_exit, true),
     [Pid] = pg2:get_local_members(?LOBBYS),
     {Host, Port} = gen_server:call(Pid, 'WHERE'),
-    pg2:create(?MULTIBOTS),
-    ok = pg2:join(?MULTIBOTS, self()),
+    pg2:create(?GAME_LAUNCHERS),
+    ok = pg2:join(?GAME_LAUNCHERS, self()),
     {ok, new(Trace, Host, Port)}.
 
 stop(Ref) ->
@@ -63,20 +61,18 @@ handle_cast({'RUN', Game, Barrier, Delay, Trace}, Data)
     T1 = now(),
     Game1 = mbu:fix_usrs(Game),
     mbu:update_players(Game1),
-    %% start test game
     Host = Data#mb.host,
     Port = Data#mb.port,
     if 
         Data#mb.trace ->
-            ?FLOG("RUN: ~p, ~p:~p, ~p~n", 
-                      [Game1#irc_game.id, Host, Port, now()]);
+            ?FLOG("RUN: ~p, ~p:~p, ~p~n", [Game1#irc_game.id, Host, Port, now()]);
         true ->
             ok
     end,
     T2 = now(),
     {ok, GID} = start_game(Game1, Delay, Barrier),
     T3 = now(),
-    {ok, Bb} = util:get_random_pid(?LAUNCHERS),
+    {ok, Bb} = util:get_random_pid(?PLAYER_LAUNCHERS),
     bb:launch(Bb, self(), GID, Game1, Host, Port, Trace),
     TestGame = #test_game {
       irc_id = Game1#irc_game.id,
@@ -202,7 +198,7 @@ handle_info({'CARDGAME EXIT', _, _}, Data) ->
 
 
 handle_info({'DOWN', _Ref, process, _Pid,  Reason}, Data) ->
-    ?ERROR([{"Child Exit With Reason:",Reason}]),
+    ?ERROR([{"Child Exit With Reason:", Reason}]),
     {noreply, Data};
 
 handle_info(Info, Data) ->
@@ -219,7 +215,13 @@ rig_deck(Game)
     Count = size(Players),
     Cards1 = player_cards(Players, Deck, 1, Count, []),
     Cards2 = player_cards(Players, Deck, 2, Count, []),
-    Cards3 = lists:map(fun make_card/1, Game#irc_game.board),
+    Cards3 = lists:map(fun hand:make_card/1, Game#irc_game.board),
+	if 
+		length(Cards3) < 3  -> 
+		   ?LOG([{invalid_test_data, irc_game, Game},{board, Game#irc_game.board},{players,Players}]);
+	    true ->
+			ok
+	end,		  	
     Cards1 ++ Cards2 ++ Cards3.
 
 player_cards(_Players, _Deck, _N, 0, Acc) ->
@@ -232,37 +234,10 @@ player_cards(Players, Deck, N, Count, Acc) ->
             length(Player#irc_player.cards) < N ->
                 deck:draw(Deck);
             true ->
-                {Face, Suit} = lists:nth(N, Player#irc_player.cards),
-                {Deck, make_card(Face, Suit)}
+                C = lists:nth(N, Player#irc_player.cards),
+                {Deck, hand:make_card(C)}
         end,
     player_cards(Players, Deck1, N, Count - 1, [Card|Acc]).
-
-make_card({Face, Suit}) ->
-    make_card(Face, Suit).
-
-make_card(Face, Suit) ->
-    Face1 = case Face of 
-                two -> ?CF_TWO;
-                three-> ?CF_THREE;
-                four -> ?CF_FOUR;
-                five -> ?CF_FIVE;
-                six -> ?CF_SIX;
-                seven -> ?CF_SEVEN;
-                eight -> ?CF_EIGHT;
-                nine -> ?CF_NINE;
-                ten -> ?CF_TEN;
-                jack -> ?CF_JACK;
-                queen -> ?CF_QUEEN;
-                king -> ?CF_KING;
-                ace -> ?CF_ACE
-            end,
-    Suit1 = case Suit of 
-                clubs -> ?CS_CLUBS;
-                diamonds -> ?CS_DIAMONDS;
-                hearts -> ?CS_HEARTS;
-                spades -> ?CS_SPADES
-            end,
-    hand:make_card(Face1, Suit1).
 
 run(Host) ->
     run(Host, true).
@@ -315,20 +290,21 @@ next_port(Host, [Pid|Rest], Max) ->
 
 start_game(G, Delay, Barrier)
   when is_record(G, irc_game) ->
+  	?LOG([{delay, Delay}]),
     Cmd = #start_game{
       id=g:uuid(),
 	  game_code=?GC_TEXAS_HOLDEM,
 	  table_name = <<"test games">>,
-      type = ?GT_TEXAS_HOLDEM,
-      limit = #limit{ type = ?LT_FIXED_LIMIT, high = 20, low = 10, min = 100, max = 2000 },
+      type = ?GT_IRC_TEXAS,
+      limit = #limit{ type = ?LT_FIXED_LIMIT, high = 20, low = 10, min = 0, max = 10000000 },
       seat_count = G#irc_game.player_count,
       required = G#irc_game.player_count,
       start_delay = Delay,
       rigged_deck = rig_deck(G),
 	  cbk=?GC_TEXAS_HOLDEM,
+	  player_timeout=?PLAYER_TIMEOUT,
       barrier = Barrier
      },
     {ok, Game} = exch:start([Cmd]),
 	erlang:monitor(process,Game),
     {ok, gen_server:call(Game, 'ID')}.
-

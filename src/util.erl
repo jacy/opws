@@ -19,9 +19,9 @@ init_db_slave(MasterNode) ->
     [mnesia:add_table_copy(Tab, node(), disc_copies) || Tab <- Tabs].
 
 nowstring() ->
-	{Y,Mon,D} = date(),
-	{H,M,S} = time(),
-	lists:concat([Y,"-",Mon,"-",D,"-",H,":",M,":",S]).
+	{YY,MM,DD} = date(),
+	{Hour,Min,Sec} = time(),
+	io_lib:format("~4..0w-~2..0w-~2..0w-~2..0w:~2..0w:~2..0w", [YY, MM, DD, Hour, Min, Sec]).
 
 %%% Grab a random member of the process group
 
@@ -40,4 +40,3 @@ get_random_pid(Name) ->
             {_,_,X} = erlang:now(),
             {ok, lists:nth((X rem length(L)) + 1, L)}
     end.
-

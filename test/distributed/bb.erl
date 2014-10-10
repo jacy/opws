@@ -17,8 +17,6 @@
 -include("pp.hrl").
 -include("schema.hrl").
 
-%% test
-
 -record(bb, {
           trace
          }).
@@ -39,9 +37,9 @@ launch(Bb, Parent, GID, Game, Host, Port, Trace)
 
 init([Trace]) ->
     process_flag(trap_exit, true),
-    pg2:create(?LAUNCHERS),
-    pg2:get_members(?LAUNCHERS),
-    ok = pg2:join(?LAUNCHERS, self()),
+    pg2:create(?PLAYER_LAUNCHERS),
+    pg2:get_members(?PLAYER_LAUNCHERS),
+    ok = pg2:join(?PLAYER_LAUNCHERS, self()),
 	?LOG({"Started current group", pg2:which_groups()}),
     {ok, #bb{ trace = Trace }}.
 
@@ -61,7 +59,7 @@ handle_cast({'LAUNCH', Parent, GID, Game, Host, Port, Trace}, Data)
        is_pid(Parent) ->
     F = fun() ->
                 T1 = now(),
-                _Observer = setup_observer(Parent, GID, Host, Port, Trace),
+                _Observer = setup_observer(Parent, GID, Host, Port, Trace), %% for stat use, and to stop multiple bots when game ends
                 _Players = setup_players(Game, GID, Host, Port),
                 T2 = now(),
                 Delta = timer:now_diff(T2, T1),
@@ -108,7 +106,7 @@ setup_players(IRC_ID, GID, Host, Port, [Player|Rest], N, Acc) ->
     Usr = list_to_binary(Player#irc_player.usr),
     Pass = <<"foo">>,
     {ok, Bot} = bot:start(Host, Port, dumbo, [Player#irc_player.actions, 1]),
-    bot:join(Bot, GID, Usr, Pass, N, Player#irc_player.balance),
+    bot:login(Bot, GID, Usr, Pass, N, Player#irc_player.balance),
     setup_players(IRC_ID, GID, Host, Port, Rest, N - 1, [{Bot, N}|Acc]).
 
 setup_observer(Parent, GID, Host, Port, Trace) 

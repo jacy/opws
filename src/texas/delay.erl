@@ -5,7 +5,10 @@
 -include("texas.hrl").
 
 start(Game, Ctx, []) ->
-    Game1 = g:restart_timer(Game, Ctx#texas.win_duration),
+    start(Game, Ctx, [Ctx#texas.win_duration]);
+
+start(Game, Ctx, [Delay]) ->
+    Game1 = g:restart_timer(Game, Delay),
     {next, delay, Game1, Ctx}.
 
 delay(Game, Ctx, {timeout, _, _}) ->

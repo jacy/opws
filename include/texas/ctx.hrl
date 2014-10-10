@@ -22,6 +22,7 @@
 					deal_type,                      %% current private or share
 					deal_count,                      
           			headsup = false,
-				    win_duration  % Delay time to show winners.
+				    win_duration,  % Delay time to show winners.
+					bump = 0  % bump once when is eligible to start games  
 				 }).
 

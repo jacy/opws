@@ -92,6 +92,7 @@ process(R = #notify_cancel_game{}, Data) ->
 
 process(R = #notify_end_game{}, Data) ->
     GID = R#notify_end_game.game,
+	?FLOG("Stoping parent:~w",[Data#obs.parent]),
     Data#obs.parent ! {'END', GID, Data#obs.winners},
     N = Data#obs.games_to_watch,
     if 
