@@ -2,6 +2,7 @@
 
 -export([all/0]).
 
+-include("common.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 start_stop_test_() ->
@@ -11,7 +12,7 @@ start_stop_test_() ->
 		fun stop/1,
 		{	inparallel, % inparallel | inorder
 			[
-				fun() -> all() end
+				{timeout, 30, [fun all/0 ]}
 			]
 		}
 	}.
@@ -20,10 +21,12 @@ start_stop_test_() ->
 %%% SETUP FUNCTIONS %%%
 %%%%%%%%%%%%%%%%%%%%%%%
 start() ->
+	?FLOG("Start running tests, please wait...~n"),
 	schema:install().
  
 stop(_) ->
-	schema:remove([node()]).
+	schema:remove([node()]),
+	init:stop().
 
 all() ->
 	mdb_tests:test(),
