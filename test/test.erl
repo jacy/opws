@@ -13,10 +13,10 @@ generator_test_() ->
 				{timeout, 
 				 30, 
 				 [
-				 	{module, mdb},  % {inorder, [{module, mdb}]},
-				 	{module, hand},
-				 	{module, pot},
-				 	{module, barrier}
+				 	mdb,   % Or if still get too many db errors can use {inorder, mdb} instead
+				 	hand,
+				 	pot,
+				 	barrier
 				 ]
 				
 				}
@@ -28,7 +28,6 @@ generator_test_() ->
 %%% SETUP FUNCTIONS %%%
 %%%%%%%%%%%%%%%%%%%%%%%
 start() ->
-	?FLOG("Start running tests, please wait...~n"),
 	schema:install().
  
 stop(_) ->
