@@ -3,67 +3,22 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("texas.hrl").
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% TESTS DESCRIPTIONS %%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Any function ending with test_ tells EUnit that it should return a list of tests
-start_stop_test_() ->
-	{
-	 	setup,
-		fun start/0,
-		fun stop/1,
-		{	inparallel, % inparallel | inorder
-			[
-				fun() -> all() end
-			]
-		}
-	}.
- 
-%%%%%%%%%%%%%%%%%%%%%%%
-%%% SETUP FUNCTIONS %%%
-%%%%%%%%%%%%%%%%%%%%%%%
-start() ->
-	schema:install().
- 
-stop(_) ->
-	schema:remove([node()]).
 
-all() ->
-	update_balance_auto_create_record(),
-	update_balance_insufficient_balance(),
-	update_balance_success(),
-	update_balance_concurrent_from_exist_balance(),
-	update_balance_concurrent_from_nonexist_balance(),
-	update_inplay_auto_create_record(),
-	update_inplay_insufficient_balance(),
-	update_inplay_success(),
-	update_inplay_concurrent_from_exist_balance(),
-	update_inplay_concurrent_from_nonexist_balance(),
-	buyin_insufficent_balance_abort_all(),
-	buyin_insufficent_inplay_abort_all(),
-	buyin_success(),
-	buyin_concurrent().
- 
-%%%%%%%%%%%%%%%%%%%%
-%%% ACTUAL TESTS %%%
-%%%%%%%%%%%%%%%%%%%%
-	
-
-update_balance_auto_create_record() ->
+update_balance_auto_create_record_test() ->
 	K = update_balance_auto_create_record,
 	?assertEqual([],mdb:read(tab_balance, K)),
 
 	ok = mdb:update_balance(K, 50),
 	?assertEqual(50, get_balance(K)).
 
-update_balance_insufficient_balance() ->
+update_balance_insufficient_balance_test() ->
 	K = update_balance_insufficient_balance,
 	create_balance(K, 50),
 
 	?assertEqual({error, not_enough_money}, mdb:update_balance(K, -50.1)),
 	?assertEqual(50, get_balance(K)).
 
-update_balance_success() ->
+update_balance_success_test() ->
 	K = update_balance_success,
 	create_balance(K, 100),
 
@@ -74,7 +29,7 @@ update_balance_success() ->
 	?assertEqual(55, get_balance(K)).
 
 
-update_balance_concurrent_from_exist_balance() ->
+update_balance_concurrent_from_exist_balance_test() ->
 	K = update_balance_concurrent_from_exist_balance,
 	create_balance(K, 10000),
 	
@@ -87,7 +42,7 @@ update_balance_concurrent_from_exist_balance() ->
 	barrier(999),
 	?assertEqual(10, get_balance(K)).
 
-update_balance_concurrent_from_nonexist_balance() ->
+update_balance_concurrent_from_nonexist_balance_test() ->
 	K = update_balance_concurrent_from_nonexist_balance,
 
 	Self = self(),
@@ -101,21 +56,21 @@ update_balance_concurrent_from_nonexist_balance() ->
 	?assertEqual(10*Loop, get_balance(K)).
 
 
-update_inplay_auto_create_record() ->
+update_inplay_auto_create_record_test() ->
 	K = {G = texas, P = update_inplay_auto_create_record},
 	?assertEqual([],mdb:read(tab_inplay, K)),
 
 	ok = mdb:update_inplay(G, P, 50),
 	?assertEqual(50, get_inplay(K)).
 
-update_inplay_insufficient_balance() ->
+update_inplay_insufficient_balance_test() ->
 	K = {G = texas, P = update_inplay_insufficient_balance},
 	create_inplay(K, 50),
 
 	?assertEqual({error, not_enough_money}, mdb:update_inplay(G, P,-50.1)),
 	?assertEqual(50, get_inplay(K)).
 
-update_inplay_success() ->
+update_inplay_success_test() ->
 	K = {G = texas, P = update_inplay_success},
 	create_inplay(K, 100),
 
@@ -126,7 +81,7 @@ update_inplay_success() ->
 	?assertEqual(55, get_inplay(K)).
 
 
-update_inplay_concurrent_from_exist_balance() ->
+update_inplay_concurrent_from_exist_balance_test() ->
 	K = {G = texas, P = update_inplay_concurrent_from_exist_balance},
 	create_inplay(K, 10000),
 	
@@ -139,7 +94,7 @@ update_inplay_concurrent_from_exist_balance() ->
 	barrier(999),
 	?assertEqual(10, get_inplay(K)).
 
-update_inplay_concurrent_from_nonexist_balance() ->
+update_inplay_concurrent_from_nonexist_balance_test() ->
 	K = {G = texas, P = update_inplay_concurrent_from_nonexist_balance},
 
 	Self = self(),
@@ -152,7 +107,7 @@ update_inplay_concurrent_from_nonexist_balance() ->
 	barrier(Loop),
 	?assertEqual(10*Loop, get_inplay(K)).
 
-buyin_insufficent_balance_abort_all()->
+buyin_insufficent_balance_abort_all_test()->
 	K = {GID = 1, PID = erlang:phash2(buyin_insufficent_balance_abort_all, 1 bsl 32)},
 	create_balance(PID, 10),
 	create_inplay(K, 10),
@@ -160,7 +115,7 @@ buyin_insufficent_balance_abort_all()->
 	?assertEqual(10, get_balance(PID)),
 	?assertEqual(10, get_inplay(K)).
 
-buyin_insufficent_inplay_abort_all()->
+buyin_insufficent_inplay_abort_all_test()->
 	K = {GID= 1, PID = erlang:phash2(buyin_insufficent_inplay_abort_all, 1 bsl 32)},
 	create_balance(PID, 10),
 	create_inplay(K, -11),
@@ -168,14 +123,14 @@ buyin_insufficent_inplay_abort_all()->
 	?assertEqual(10, get_balance(PID)),
 	?assertEqual(-11, get_inplay(K)).
 
-buyin_success()->
+buyin_success_test()->
 	K = {GID= 1, PID=erlang:phash2(buyin_success, 1 bsl 32)},
 	create_balance(PID, 10),
 	ok = mdb:buy_in(GID, PID, 10),
 	?assertEqual(0, get_balance(PID)),
 	?assertEqual(10, get_inplay(K)).
 
-buyin_concurrent() ->
+buyin_concurrent_test() ->
 	K = {G = 1, P = erlang:phash2(buyin_concurrent, 1 bsl 32)},
 	create_balance(P, 10000),
 	

@@ -57,7 +57,7 @@
 %%% TEXAS Type
 
 -define(GT_TEXAS_HOLDEM, 0).
--define(GT_IRC_TEXAS, 1).% IRC poker db
+-define(GT_IRC_TEXAS, 1).% Testing game
 -define(GT_SIT_N_GO, 2). 
 
 %%% Limit type

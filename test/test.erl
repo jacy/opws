@@ -2,10 +2,33 @@
 
 -export([all/0]).
 
-%% 	whenever you ask EUnit to test the module m, it will also look for the module m_tests 
+-include_lib("eunit/include/eunit.hrl").
+
+start_stop_test_() ->
+	{
+	 	setup,
+		fun start/0,
+		fun stop/1,
+		{	inparallel, % inparallel | inorder
+			[
+				fun() -> all() end
+			]
+		}
+	}.
+ 
+%%%%%%%%%%%%%%%%%%%%%%%
+%%% SETUP FUNCTIONS %%%
+%%%%%%%%%%%%%%%%%%%%%%%
+start() ->
+	schema:install().
+ 
+stop(_) ->
+	schema:remove([node()]).
+
 all() ->
 	mdb_tests:test(),
 	hand_tests:test(),
 	pot_tests:test(),
 	barrier_tests:test(),
+	blind_tests:test(),
 	ok.

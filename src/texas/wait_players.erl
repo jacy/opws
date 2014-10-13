@@ -5,7 +5,10 @@
 -include("texas.hrl").
 
 start(Game, Ctx, []) ->
-  Game1 = g:restart_timer(Game, Game#game.start_delay),
+  start(Game, Ctx, [Game#game.start_delay]);
+
+start(Game, Ctx, [Delay]) ->
+  Game1 = g:restart_timer(Game, Delay),
   %% reset call amount
   Ctx1 = Ctx#texas{ call = 0, stage=?GS_CANCEL },
   {next, wait_for_players, Game1, Ctx1}.
