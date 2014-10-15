@@ -1,14 +1,18 @@
--module(blind_tests).
+-module(dead_button_blinds_tests).
 
 -include("texas.hrl").
 -include_lib("eunit/include/eunit.hrl").
+
 %%% http://www.homepokertourney.com/button.htm
 
+
+%% Heads-up play. The small blind is the button and acts first 
+%% before the flop and last after the flop. The player 
+%% who does not have the button is dealt the first card.
 headsup_test() ->
     {Game, Players} = make_game_heads_up(),
-    GID = gen_server:call(Game, 'ID'),
     [A, B] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [A, B]),
+	?LOG(Players),
     Ctx = #texas {
       b = element(2, A),
       sb = element(2, A), 
@@ -23,13 +27,12 @@ headsup_test() ->
     ok.
 
 
-%%% 3 players, button is bust
+%% 3 players, button is bust
 three_players_button_bust_test() ->
     {Game, Players} = make_game_3_bust(),
-    GID = gen_server:call(Game, 'ID'),
     [A, B, C] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [A, B, C]),
     install_trigger(fun bust_trigger/3, Game, element(1, A)),
+	%% the small blind becomes the big blind, and the big blind becomes the small blind and button
     Ctx = #texas {
       b = element(2, C),
       sb = element(2, C),
@@ -47,9 +50,7 @@ three_players_button_bust_test() ->
 
 three_players_sb_bust_test() ->
     {Game, Players} = make_game_3_bust(),
-    GID = gen_server:call(Game, 'ID'),
     [A, B, C] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [A, B, C]),
     install_trigger(fun bust_trigger/3, Game, element(1, B)),
     Ctx = #texas {
       b = element(2, C),
@@ -68,9 +69,7 @@ three_players_sb_bust_test() ->
 
 three_players_bb_bust_test() ->
     {Game, Players} = make_game_3_bust(),
-    GID = gen_server:call(Game, 'ID'),
     [A, B, C] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [A, B, C]),
     install_trigger(fun bust_trigger/3, Game, element(1, C)),
     Ctx = #texas {
       b = element(2, B),
@@ -89,9 +88,7 @@ three_players_bb_bust_test() ->
 
 five_players_sb_bust_test() ->
     {Game, Players} = make_game_5_bust(),
-    GID = gen_server:call(Game, 'ID'),
-    [_, B, C, D, E] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [B, C, D, E]),
+    [_, B, C, D, _E] = Players,
     install_trigger(fun bust_trigger/3, Game, element(1, B)),
     Ctx = #texas {
       b = element(2, B),
@@ -108,9 +105,7 @@ five_players_sb_bust_test() ->
 
 five_players_bust_test() ->
     {Game, Players} = make_game_5_bust(2, 3, 4),
-    GID = gen_server:call(Game, 'ID'),
     [_, B, C, D, E] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [B, C, D, E]),
     install_trigger(fun bust_trigger/3, Game, element(1, B)),
     Ctx = #texas {
       b = element(2, C),
@@ -129,9 +124,7 @@ five_players_bust_test() ->
 
 five_players_bb_bust_test() ->
     {Game, Players} = make_game_5_bust(),
-    GID = gen_server:call(Game, 'ID'),
-    [_, B, C, D, E] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [B, C, D, E]),
+    [_, B, C, D, _E] = Players,
     install_trigger(fun bust_trigger/3, Game, element(1, C)),
     Ctx = #texas {
       b = element(2, B),
@@ -148,9 +141,7 @@ five_players_bb_bust_test() ->
 
 five_players_bust1_test() ->
     {Game, Players} = make_game_5_bust(2, 3, 4),
-    GID = gen_server:call(Game, 'ID'),
-    [_, B, C, D, E] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [B, C, D, E]),
+    [_, _B, C, D, E] = Players,
     install_trigger(fun bust_trigger/3, Game, element(1, C)),
     Ctx = #texas {
       b = element(2, C),
@@ -169,9 +160,7 @@ five_players_bust1_test() ->
 
 five_players_blinds_bust_test() ->
     {Game, Players} = make_game_5_bust(),
-    GID = gen_server:call(Game, 'ID'),
-    [_, B, C, D, E] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [B, C, D, E]),
+    [_, B, C, D, _E] = Players,
     install_trigger(fun bust_trigger/3, Game, element(1, B)),
     install_trigger(fun bust_trigger/3, Game, element(1, C)),
     Ctx = #texas {
@@ -189,9 +178,7 @@ five_players_blinds_bust_test() ->
 
 five_players_blinds_bust1_test() ->
     {Game, Players} = make_game_5_bust(2, 3, 4),
-    GID = gen_server:call(Game, 'ID'),
     [_, B, C, D, E] = Players,
-    install_trigger(fun post_blinds_trigger/3, {Game, GID}, [B, C, D, E]),
     install_trigger(fun bust_trigger/3, Game, element(1, B)),
     install_trigger(fun bust_trigger/3, Game, element(1, C)),
     Ctx = #texas {
@@ -225,9 +212,9 @@ make_game_heads_up() ->
 make_game_3_bust() ->
     Players = make_players(3),
     Ctx = #texas {
+      b = element(2, lists:nth(1, Players)),
       sb = element(2, lists:nth(2, Players)),
-      bb = element(2, lists:nth(3, Players)),
-      b = element(2, lists:nth(1, Players))
+      bb = element(2, lists:nth(3, Players))
      },
     Game = make_test_game(Players, Ctx, modules()),
     {Game, Players}.
@@ -265,27 +252,14 @@ bust_trigger(Game, Event, RegName) ->
             Game
     end.
 
-%%% Intercept bet request (both blinds are posted) and raise
-
-post_blinds_trigger({Game, GID}, Event, RegName) ->
-    case Event of 
-        {in, {'$gen_cast', #bet_req{ game = GID, min = 0.0, max = 0.0 }}} ->
-            %% post the blind
-            Pid = global:whereis_name(RegName),
-            gen_server:cast(Game, #raise{ player = Pid, raise = 0.0 }),
-            done;
-        _ ->
-            {Game, GID}
-    end.
-
 modules() -> 
     [{wait_players, [1000]}, 
-     {delay, [100]},
-     {blinds, []}].
+     {delay, [1000]}, %% delay the blinds, so palyers still can send request before blinds, easier to mock player bust.
+     {dead_button_blinds, []}].
 
 make_player(Nick) 
   when is_binary(Nick) ->
-    {ok, ID} = player:create(Nick, Nick, <<"">>, 1000.0),
+    {ok, ID} = player:create(Nick, Nick, Nick, <<"">>, 1000.0),
     {ok, Pid} = player:start(ID),
     {Pid, ID}.
 
@@ -305,8 +279,9 @@ make_test_game(Players, Context, Modules) ->
 
 make_test_game(SeatCount, Players, Context, Modules) ->
     Cmd = #start_game{
+	  id=g:uuid(),
       table_name = <<"test game">>,
-      type = ?GT_IRC_TEXAS,
+      type = ?GC_TEXAS_HOLDEM,
 	  game_code=?GC_TEXAS_HOLDEM,
 	  cbk=?GC_TEXAS_HOLDEM,
       limit = #limit{ type = ?LT_FIXED_LIMIT, low = 10.0, high = 20.0, min = 0, max= 20000000},
@@ -315,7 +290,7 @@ make_test_game(SeatCount, Players, Context, Modules) ->
       start_delay = 1000,
       player_timeout = 1000
      },
-    {ok, Game} = test_make_game(Cmd, Context, Modules),
+    {ok, Game} =  exch:start(Cmd, Modules, Context,self()),
     join_game(Game, Players),
     Game.
 
@@ -323,7 +298,7 @@ join_game(_Game, []) ->
     ok;
 
 join_game(Game, [{Player, SeatNum, _}|Rest]) ->
-    gen_server:cast(Game, _ = #join{ 
+    gen_server:cast(Game, #join{ 
                             game = Game,
                             player = Player,
                             pid = gen_server:call(Player, 'ID'),
@@ -341,7 +316,7 @@ nick(Prefix) ->
                    integer_to_list(random:uniform(10000000))).
 stop_player(Player, ID) ->
     gen_server:cast(Player, #logout{}),
-    ok = db:delete(tab_player_info, ID),
+    ok = mdb:delete(tab_player_info, ID),
     stop_proc(Player, fun player:stop/1).
 
 stop_proc(Pid, F) ->
@@ -356,10 +331,6 @@ stop_proc(Pid, F) ->
 
 wait() ->
     wait(5000).
-
-wait(Skip) 
-  when is_list(Skip) ->
-    wait(5000, Skip);
 
 wait(Timeout)
   when is_integer(Timeout) ->
@@ -392,21 +363,6 @@ wait(Timeout, Skip) ->
 game_stop(Game) ->
     gen_server:cast(Game, stop).
 
-
-test_make_game(Cmd, Context, Modules) ->
-    test_make_game(Cmd, Context, Modules, 0).
-
-test_make_game(_, _, _, N) 
-  when N > 1000 ->
-    {error, cannot_start_test_game};
-
-test_make_game(Cmd, Context, Modules, N) ->
-    case g:make(Cmd, Context, Modules) of
-        X = {ok, _} ->
-            X;
-        _ ->
-            test_make_game(Cmd, Context, Modules, N + 1)
-    end.
 
 ctx(Ctx) ->
     {Ctx#texas.b, % button position

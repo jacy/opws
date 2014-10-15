@@ -11,7 +11,8 @@ start(Game, Ctx, []) ->
   process_flag(trap_exit, true),
   link(Game#game.barrier),
   Game1 = g:restart_timer(Game, Game#game.start_delay),
-  Ctx1 = Ctx#texas{ call = 0, bump=0, stage=?GS_CANCEL },
+  Ctx1 = Ctx#texas{ call = 0, bump=0, stage=?GS_CANCEL, 
+			sb = none, bb = none,  b = none },  %% Clean Context for Distributed Test
   {next, game_start, Game1, Ctx1}.
 
 game_start(Game, Ctx, {timeout, _, _}) ->

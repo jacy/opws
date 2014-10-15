@@ -170,11 +170,9 @@ texas_holdem_mods() ->
         ++ [ {restart, []} ].
 
 irc_texas_mods(Barrier) ->
-    %% irc texas differs slightly in application of button 
-    %% rules as well as the number of raises allowed
     Mods = [
             %% irc blind rules
-            {blinds, [irc]},
+            {blinds, []},
             %% deal 2 cards to each player
             {deal_cards, [2, private]}, 
             %% start after BB, 100 raises

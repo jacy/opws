@@ -6,7 +6,7 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([start/1 ]).
+-export([start/1, start/4]).
 
 -include("common.hrl").
 -include("pp.hrl").
@@ -19,31 +19,35 @@
           modules,
           stack,
           state,
-          ctx
+          ctx,
+		  parent=none % for test
          }).
 
 behaviour_info(callbacks) ->
     [{start, 1},
-     {modules, 1},
-     {context, 0},
      {stop, 1}, 
      {call, 2},
      {cast, 3}].
 
-start([R= #start_game{id=GID, cbk=Cbk}]) ->
-	?LOG({start_game, R}),
-    gen_server:start({global, {Cbk, GID}}, ?MODULE, [R], []).
+start([R= #start_game{ cbk=Cbk}]) ->
+	Modules = Cbk:modules(R),
+	Ctx = Cbk:context(),
+    start(R, Modules, Ctx, none).
 
-init(Args = [#start_game{cbk=Cbk}]) ->
+start(R= #start_game{id=GID, cbk=Cbk}, Modules, Ctx, Parent) ->
+    gen_server:start({global, {Cbk, GID}}, ?MODULE, [R, Modules, Ctx, Parent],[]).
+
+init([R = #start_game{cbk=Cbk}, Modules, Ctx, Parent]) ->
+	?LOG([{start_game, R}, {modules,Modules},{ctx,Ctx}]),
     process_flag(trap_exit, true),
-    {Data, Start} = Cbk:start(Args),
-	Modules = Cbk:modules(Args),
+    {Data, Start} = Cbk:start([R]),
     Exch = #exch{
       data = Data,
+	  parent = Parent,
       modules = Modules,
 	  callback= Cbk,
       stack = Modules,
-      ctx = Cbk:context()
+      ctx = Ctx
      },
     case fsm_init(Exch, Start) of
         {stop, _, Exch1} ->
@@ -110,7 +114,14 @@ advance(Exch= #exch{callback=Cbk}, Event, {skip, Data, Ctx}) ->
   {noreply, Exch#exch{ data = Cbk:cast(Event, Ctx, Data)}};
 
 %% stop game server for irc games.
-advance(Exch = #exch{ stack = [_LastMod] }, _, {stop, Data, _Ctx}) ->
+advance(Exch = #exch{ stack = [_LastMod] }, _, {stop, Data, Ctx}) ->
+	 %% game over
+    if
+        Exch#exch.parent =/= none andalso is_pid(Exch#exch.parent) ->
+            Exch#exch.parent ! {'EXCH EXIT', self(), Ctx};
+        true ->
+            ok
+    end,
     {stop, normal, Exch#exch{ data = Data, stack = [] }};
 
 advance(Exch = #exch{ stack = [_|NextMod] }, Event, {stop, Data, Ctx}) ->

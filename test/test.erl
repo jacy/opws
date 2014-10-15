@@ -17,6 +17,7 @@ generator_test_() ->
 				 	hand,
 				 	pot,
 				 	barrier
+%% 					dead_button_blinds
 				 ]
 				
 				}
@@ -28,7 +29,8 @@ generator_test_() ->
 %%% SETUP FUNCTIONS %%%
 %%%%%%%%%%%%%%%%%%%%%%%
 start() ->
+	?SET_LOG_FILE(),
 	schema:install().
  
 stop(_) ->
-	schema:remove([node()]).
+	ok.

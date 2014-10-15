@@ -1,5 +1,3 @@
-%%% Texas Hold'em game context 
-
 -record(texas, {
 					b = none,                       %% button
 					sb = none,                      %% small blind
@@ -9,7 +7,6 @@
 					sb_amt = 0,
 					bb_amt = 0,
 					sb_bet = 0,
-					blind_type = normal,
 					exp_player = none,              %% expecting player
 					exp_seat = none,                %% expecting seat
 					exp_amt = 0,                    %% expecting amount

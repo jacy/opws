@@ -4,9 +4,6 @@
 -include("texas.hrl").
 
 start(Game, Ctx, []) ->
-  start(Game, Ctx, [normal]);
-
-start(Game, Ctx, [Type]) ->
   {Small, Big} = (Game#game.limit):blinds(Game#game.low, Game#game.high),
 
   Ctx1 = Ctx#texas{
@@ -14,59 +11,38 @@ start(Game, Ctx, [Type]) ->
 	bb_amt = Big,
 	sb_bet = 0.0,
     no_sb = false,
-	sb_all_in = false,
-	blind_type = Type 
+	sb_all_in = false
   },
   
-  Ctx2 = if 
-      Type == irc ->
-           Ctx1#texas{
-				sb = none, 
-				bb = none, 
-				b = none 
-			};
-       true ->
-           Ctx1
-   end,
-
-  %% advance button and broadcast position
-  Button = advance_button(Game, Ctx2),
+  Button = advance_button(Game, Ctx1),
   Game1 = g:broadcast(Game, 
     #notify_button{ game = Game#game.gid, button = Button }
   ),
 
-  %% 确定大小盲并下盲注
   AllPlayers =seat:get_seats(Game1, Button, ?PS_ACTIVE),
   L = length(AllPlayers),
-  HeadsUp = (L == 2), %% 除庄家外只有一个玩家
+  HeadsUp = (L == 2),
 
   if
     L < 2 ->
-      {goto, top, Game1, Ctx2};
+      {goto, top, Game1, Ctx1};
     HeadsUp ->
       %% 一对一时特殊规则生效
       %% 庄家下小盲注，对家下大盲注
       %% 首次行动由庄家先叫，之后每次都为对家先叫
-      Ctx3 = Ctx2#texas{ b = Button, headsup = true },
-      ask_for_blind(Game1, Ctx3, Button, Ctx2#texas.sb_amt, small_blind);
+      Ctx2 = Ctx1#texas{ b = Button, headsup = true },
+      ask_for_blind(Game1, Ctx2, Button, Ctx2#texas.sb_amt, small_blind);
     true ->
-      Ctx3 = Ctx2#texas{ b = Button, sb = hd(AllPlayers) },
-      ask_for_blind(Game1, Ctx3, Ctx3#texas.sb, Ctx3#texas.sb_amt, small_blind)
+      Ctx2 = Ctx1#texas{ b = Button, sb = hd(AllPlayers) },
+      ask_for_blind(Game1, Ctx2, Ctx2#texas.sb, Ctx2#texas.sb_amt, small_blind)
   end.
 
 %%
 %% Utility
 %%
 advance_button(Game, Ctx) ->
-  case Ctx#texas.b of
-    none ->
-      %% 新的牌局开始时庄家自动选择
-      AllPlayers =seat:get_seats(Game, ?PS_PLAY),
-      lists:last(AllPlayers);
-    _ ->
-      Players =seat:get_seats(Game, Ctx#texas.b, ?PS_PLAY),
-      hd(Players)
-  end.
+  Players =seat:get_seats(Game, Ctx#texas.b, ?PS_PLAY),
+  hd(Players).
 
 ask_for_blind(Game, Ctx, N, Amount, State) ->
   Seat = seat:get_seat(Game, N),
