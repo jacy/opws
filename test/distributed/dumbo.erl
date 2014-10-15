@@ -59,6 +59,11 @@ play(R = #notify_join{ game = G, player = P }, Data)
        P == Data#dumbo.player ->
     {continue, Data#dumbo{ inplay = R#notify_join.amount }, []};
 
+play(#notify_blind{ game = G, player = P, call=Call }, Data)
+  when G == Data#dumbo.game,
+       P == Data#dumbo.player ->
+    {continue, Data#dumbo{ inplay = Data#dumbo.inplay - Call}, []};
+
 play(#notify_leave{ game = G, player = P }, Data) 
   when G == Data#dumbo.game, 
        P == Data#dumbo.player ->
@@ -81,11 +86,11 @@ play(_E, Data) ->
 
 %%% Handle old actions
 
-react(R = #bet_req{}, 'BLIND', Data) ->
-    react(R, 'CALL', Data);
-
-react(R = #bet_req{}, {'BLIND', allin}, Data) ->
-    react(R, 'ALL IN', Data);
+%% react(R = #bet_req{}, 'BLIND', Data) ->
+%%     react(R, 'CALL', Data);
+%% 
+%% react(R = #bet_req{}, {'BLIND', allin}, Data) ->
+%%     react(R, 'ALL IN', Data);
 
 react(R = #bet_req{}, {'CALL', allin}, Data) ->
     react(R, 'ALL IN', Data);
