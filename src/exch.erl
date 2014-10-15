@@ -30,7 +30,7 @@ behaviour_info(callbacks) ->
      {cast, 3}].
 
 start([R= #start_game{ cbk=Cbk}]) ->
-	Modules = Cbk:modules(R),
+	Modules = Cbk:modules([R]),
 	Ctx = Cbk:context(),
     start(R, Modules, Ctx, none).
 
