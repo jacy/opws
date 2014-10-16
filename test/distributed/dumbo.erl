@@ -90,7 +90,7 @@ react(R = #bet_req{}, 'BLIND', Data) ->
     play(R, Data);  % excute next action
 
 react(R = #bet_req{}, {'BLIND', allin}, Data) ->
-    play(R, Data); % excute next action
+	react(R, 'ALL IN', Data);
 
 react(R = #bet_req{}, {'CALL', allin}, Data) ->
     react(R, 'ALL IN', Data);

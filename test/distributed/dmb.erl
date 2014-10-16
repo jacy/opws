@@ -131,7 +131,7 @@ test(DB, Key, Max, N, Data) ->
 
 wait_for_games(Data)
   when is_record(Data, dmb) ->
-	error_logger:info_msg("wait_for_games with dmb: ~p~n", [dmb]),
+	error_logger:info_msg("wait_for_games with dmb: ~p~n", [Data]),
     receive
         {'EXIT', _, Reason} ->
             Data1 = Data#dmb{ finished = Data#dmb.finished + 1 },
@@ -155,7 +155,7 @@ wait_for_games(Data)
     T1 = Data#dmb.start_time,
     T2 = erlang:now(),
     Elapsed = timer:now_diff(T2, T1) / 1000 / 1000,
-	timer:sleep(5000), % make sure other logs not showing up anymore.
+	timer:sleep(1000), % make sure other logs not showing up anymore.
     error_logger:info_msg("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]).
 
 setup() ->

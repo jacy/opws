@@ -62,7 +62,13 @@ process(R = #notify_join{}, Data) ->
 process(R = #notify_win{}, Data) ->
     Amt = R#notify_win.amount / 1.0,
     N = gb_trees:get(R#notify_win.player, Data#obs.seats),
-    Winners1 = gb_trees:insert(N, Amt, Data#obs.winners),
+	Old = case gb_trees:lookup(N, Data#obs.winners) of
+      {value, Val} ->
+          Val;
+      none ->
+          0
+    end,
+    Winners1 = gb_trees:enter(N, Amt+Old, Data#obs.winners),
     Data#obs{ winners = Winners1 };
 
 process(R = #player_info{}, Data) ->
@@ -93,6 +99,7 @@ process(R = #notify_cancel_game{}, Data) ->
 process(R = #notify_end_game{}, Data) ->
     GID = R#notify_end_game.game,
 	?FLOG("Stoping parent:~w",[Data#obs.parent]),
+	error_logger:info_msg("endgid:~p~n",  [GID]),
     Data#obs.parent ! {'END', GID, Data#obs.winners},
     N = Data#obs.games_to_watch,
     if 

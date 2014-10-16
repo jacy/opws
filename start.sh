@@ -5,7 +5,7 @@ echo "	Start node: $NODE_NAME"
 
 COOKIE="jacygames"
 MNESIA_DIR="/mnesia/$NODE_NAME"
-LOG_DIR="/tmp/elog"
+LOG_DIR="/var/log/erlang"
 
 echo "	Mnesia storage dir: $MNESIA_DIR"
 sudo mkdir -p $MNESIA_DIR

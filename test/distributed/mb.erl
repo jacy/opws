@@ -12,7 +12,7 @@
 -include("ircdb.hrl").
 -include("pp.hrl").
 -include("schema.hrl").
-
+-define(START_PORT, 2000).
 -record(mb, {
           host, 
           port,
@@ -62,7 +62,8 @@ handle_cast({'RUN', Game, Barrier, Delay, Trace}, Data)
     Game1 = mbu:fix_usrs(Game),
     mbu:update_players(Game1),
 	
-	error_logger:info_msg("Game:~p~n",  [Game1]),
+	error_logger:info_msg("Gid:~p~n",  [Game1#irc_game.id]),
+	?LOG({start_game,Game}),
 	
     Host = Data#mb.host,
     Port = Data#mb.port,
@@ -91,6 +92,7 @@ handle_cast({'RUN', Game, Barrier, Delay, Trace}, Data)
              },
     T4 = now(),
     stats:sum(games_launched, 1),
+	stats:start_game(GID),
     stats:max(max_game_launch_time, timer:now_diff(T4, T1)),
     stats:avg(game_launch_time, timer:now_diff(T4, T1)),
     stats:avg(game_start_time, timer:now_diff(T3, T2)),
@@ -112,6 +114,7 @@ handle_info({'START', _GID}, Data) ->
 handle_info({'END', GID, Winners}, Data) ->
     stats:sum(games_ended, 1),
     stats:add(total_games_ended, 1),
+	stats:end_game(GID),
     %% score it
     Games = Data#mb.games,
     Game = gb_trees:get(GID, Games),
@@ -268,9 +271,9 @@ next_port(Host) ->
     case pg2:get_members(?LOBBYS) of
         {error, X} ->
             ?FLOG("next_port: ~p~n", [X]),
-            3000;
+            ?START_PORT;
         L when is_list(L) ->
-            next_port(Host, L, 3000)
+            next_port(Host, L, ?START_PORT)
     end.
 
 next_port(_, [], Max) ->

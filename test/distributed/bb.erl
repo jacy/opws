@@ -66,7 +66,7 @@ handle_cast({'LAUNCH', Parent, GID, Game, Host, Port, Trace}, Data)
                 stats:max(player_connect_time, Delta),
                 stats:avg(player_connect_time, Delta)
         end,
-    spawn_monitor(F),
+    spawn(F),
     {noreply, Data};
 
 handle_cast(Event, Data) ->
@@ -76,10 +76,6 @@ handle_cast(Event, Data) ->
 handle_call(Event, From, Data) ->
     ?ERROR([{event, Event}, {from, From}, {data, Data}]),
     {noreply, Data}.
-
-handle_info({'DOWN', _Ref, process, _Pid,  Reason}, Data) ->
-    ?ERROR([{"Child Exit With Reason:",Reason}]),
-    {noreply, Data};
 
 handle_info(Info, Data) ->
     ?ERROR([{message, Info}]),
