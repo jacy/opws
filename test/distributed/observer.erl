@@ -42,7 +42,7 @@ stop(_) ->
 
 observe(R, Data) ->
     Data1 = process(R, Data),
-    maybe_report(R, Data1),
+%%     maybe_report(R, Data1),
     if
         Data#obs.stop ->
             Next = stop,
@@ -227,9 +227,5 @@ report(R = #show_cards{}) ->
                R#show_cards.player, 
                Cards1]);
 
-report(R) ->
-    error_logger:error_report([{module, ?MODULE}, 
-                               {line, ?LINE},
-                               {message, R}
-                              ]),
+report(_) ->
     ok.

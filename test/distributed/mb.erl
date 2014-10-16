@@ -61,6 +61,9 @@ handle_cast({'RUN', Game, Barrier, Delay, Trace}, Data)
     T1 = now(),
     Game1 = mbu:fix_usrs(Game),
     mbu:update_players(Game1),
+	
+	error_logger:info_msg("Game:~p~n",  [Game1]),
+	
     Host = Data#mb.host,
     Port = Data#mb.port,
     if 
@@ -250,7 +253,7 @@ run(Host, TestMode) ->
     mdb:start(),
     pg2:start(),
     Port = next_port(Host),
-    ?FLOG("~p: game server on port ~p~n", [node(), Port]),
+    error_logger:info_msg("~p: game server on port ~p~n", [node(), Port]),
     lobby:start(Host, Port, TestMode, socket),
     {ok, _} = start(TestMode),
     ok.
@@ -292,7 +295,7 @@ start_game(G, Delay, Barrier)
   when is_record(G, irc_game) ->
   	?LOG([{delay, Delay}]),
     Cmd = #start_game{
-      id=g:uuid(),
+      id=G#irc_game.id,
 	  game_code=?GC_TEXAS_HOLDEM,
 	  table_name = <<"test games">>,
       type = ?GT_IRC_TEXAS,
@@ -302,7 +305,7 @@ start_game(G, Delay, Barrier)
       start_delay = Delay,
       rigged_deck = rig_deck(G),
 	  cbk=?GC_TEXAS_HOLDEM,
-	  player_timeout=?PLAYER_TIMEOUT,
+	  player_timeout=5000,
       barrier = Barrier
      },
     {ok, Game} = exch:start([Cmd]),

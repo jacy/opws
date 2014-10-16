@@ -27,11 +27,12 @@
 %%% Run a single game on the current VM
 
 debug(GameID) ->
+	?SET_LOG_FILE(),
     process_flag(trap_exit, true),
     bb:run(),
     mb:run(localhost, true),
     gateway:start(node(), 4000, 500000),
-    ?FLOG("Debugging ~p~n", [GameID]),
+    error_logger:info_msg("Debugging ~p~n", [GameID]),
     DB = mbu:opendb(),
     Data = #dmb{
       start_time = now(),
@@ -69,7 +70,7 @@ test(MaxGames, Delay, Trace)
        is_atom(Trace) ->
     process_flag(trap_exit, true),
     gateway:start(node(), 4000, 500000),
-    ?FLOG("Simulating gameplay with ~p games...~n", [MaxGames]),
+    error_logger:info_msg("Simulating gameplay with ~p games...~n", [MaxGames]),
     DB = mbu:opendb(),
     Key = dets:first(DB),
 
@@ -82,20 +83,20 @@ test(MaxGames, Delay, Trace)
       barrier = Barrier,
       started = length(pg2:get_members(?GAME_LAUNCHERS))
      },
-    ?FLOG("== DB ~p~n", [DB]),
-    ?FLOG("== Key ~p~n", [Key]),
-    ?FLOG("== Max ~p~n", [MaxGames]),
-    ?FLOG("== Data ~p~n", [Data]),
+    error_logger:info_msg("== DB ~p~n", [DB]),
+    error_logger:info_msg("== Key ~p~n", [Key]),
+    error_logger:info_msg("== Max ~p~n", [MaxGames]),
+    error_logger:info_msg("== Data ~p~n", [Data]),
     Data1 = test(DB, Key, MaxGames, 0, Data),
-    ?FLOG("dmb: waiting for games to end...~n"),
+    error_logger:info_msg("dmb: waiting for games to end...~n"),
     wait_for_games(Data1).
 
 go(Barrier, N) ->
-    ?FLOG("dmb: ~p games will be launching simultaneously~n", [N]),
+    error_logger:info_msg("dmb: ~p games will be launching simultaneously~n", [N]),
     gen_server:cast(Barrier, {'TARGET', N}).
 
 test(DB, '$end_of_table', _, N, Data) ->
-    ?FLOG("dmb: End of database reached. No more games to launch!~n"),
+    error_logger:info_msg("dmb: End of database reached. No more games to launch!~n"),
     go(Data#dmb.barrier, N),
     mbu:closedb(DB),
     Data;
@@ -130,7 +131,7 @@ test(DB, Key, Max, N, Data) ->
 
 wait_for_games(Data)
   when is_record(Data, dmb) ->
-	?FLOG("wait_for_games with dmb: ~p~n", [dmb]),
+	error_logger:info_msg("wait_for_games with dmb: ~p~n", [dmb]),
     receive
         {'EXIT', _, Reason} ->
             Data1 = Data#dmb{ finished = Data#dmb.finished + 1 },
@@ -148,14 +149,14 @@ wait_for_games(Data)
                     wait_for_games(Data2)
             end;
         Other ->
-            ?FLOG("wait_for_games, receive other message: ~p~n", [Other]),
+            error_logger:info_msg("wait_for_games, receive other message: ~p~n", [Other]),
             wait_for_games(Data)
     end,
     T1 = Data#dmb.start_time,
     T2 = erlang:now(),
     Elapsed = timer:now_diff(T2, T1) / 1000 / 1000,
 	timer:sleep(5000), % make sure other logs not showing up anymore.
-    ?FLOG("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]).
+    error_logger:info_msg("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]).
 
 setup() ->
     schema:install(),
@@ -189,17 +190,18 @@ run(Games, Lobbys, BotServers, Interval)
        is_integer(Lobbys),
        is_integer(BotServers) ->
 	?SET_LOG_FILE(),
+	error_logger:info_msg("Setting up slave servers, please wait..."),
     mdb:start(),
     pg2:start(),
     start_bot_slaves(BotServers),
     start_game_slaves(Lobbys),
-    ?FLOG("cluster: ~p~n", [nodes()]),
+    error_logger:info_msg("cluster: ~p~n", [nodes()]),
     wait_for_group(?PLAYER_LAUNCHERS),
     wait_for_group(?GAME_LAUNCHERS),
     wait_for_group(?LOBBYS),
-    ?FLOG("player launchers  : ~p~n", [pg2:get_members(?PLAYER_LAUNCHERS)]),
-    ?FLOG("game launchers : ~p~n", [pg2:get_members(?GAME_LAUNCHERS)]),
-    ?FLOG("lobbys   : ~p~n", [pg2:get_members(?LOBBYS)]),
+    error_logger:info_msg("player launchers  : ~p~n", [pg2:get_members(?PLAYER_LAUNCHERS)]),
+    error_logger:info_msg("game launchers : ~p~n", [pg2:get_members(?GAME_LAUNCHERS)]),
+    error_logger:info_msg("lobbys   : ~p~n", [pg2:get_members(?LOBBYS)]),
     if 
         Interval =/= none ->
             stats:start(Interval);
@@ -238,13 +240,12 @@ common_args() ->
 start_slave_node(Name, Args) ->
     case slave:start_link(net_adm:localhost(), Name, Args) of
         {ok, Node} ->
-            timer:sleep(1000),
             rpc:call(Node, mnesia, start, []),
             rpc:call(Node, mnesia, change_config, [extra_db_nodes, [node()]]),
             timer:sleep(1000),
             Node;
         Reason ->
-            ?FLOG("Failed to start slave node: ~p. Retrying in 1 second.~n", [Reason]),
+            error_logger:info_msg("Failed to start slave node: ~p. Retrying in 1 second.~n", [Reason]),
             timer:sleep(1000),
             start_slave_node(Name, Args)
     end.
@@ -254,7 +255,7 @@ start_slave_node(Name, Args) ->
 wait_for_group(Name) ->
     case pg2:get_members(Name) of
         {error, _} ->
-            ?FLOG("Group ~p is not available. Retrying in 1 second.~n", [Name]),
+            error_logger:info_msg("Group ~p is not available. Retrying in 1 second.~n", [Name]),
             timer:sleep(1000),
             wait_for_group(Name);
         _ ->

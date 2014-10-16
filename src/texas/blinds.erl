@@ -21,17 +21,16 @@ start(Game, Ctx, []) ->
 
   AllPlayers =seat:get_seats(Game1, Button, ?PS_ACTIVE),
   L = length(AllPlayers),
-  HeadsUp = (L == 2),
 
   if
     L < 2 ->
       {goto, top, Game1, Ctx1};
-    HeadsUp ->
-      %% 一对一时特殊规则生效
-      %% 庄家下小盲注，对家下大盲注
-      %% 首次行动由庄家先叫，之后每次都为对家先叫
-      Ctx2 = Ctx1#texas{ b = Button, headsup = true },
-      ask_for_blind(Game1, Ctx2, Button, Ctx2#texas.sb_amt, small_blind);
+%%  L == 2 ->
+%%       %% 一对一时特殊规则生效
+%%       %% 庄家下小盲注，对家下大盲注
+%%       %% 首次行动由庄家先叫，之后每次都为对家先叫
+%%       Ctx2 = Ctx1#texas{ b = Button, headsup = true },
+%%       ask_for_blind(Game1, Ctx2, Button, Ctx2#texas.sb_amt, small_blind);
     true ->
       Ctx2 = Ctx1#texas{ b = Button, sb = hd(AllPlayers) },
       ask_for_blind(Game1, Ctx2, Ctx2#texas.sb, Ctx2#texas.sb_amt, small_blind)
@@ -41,8 +40,18 @@ start(Game, Ctx, []) ->
 %% Utility
 %%
 advance_button(Game, Ctx) ->
-  Players =seat:get_seats(Game, Ctx#texas.b, ?PS_PLAY),
-  hd(Players).
+   B = Ctx#texas.b,
+   if
+        B == none ->
+            %% first hand of the game the first player would be the sb
+            Players = seat:get_seats(Game, ?PS_PLAY),
+            lists:last(Players);
+        true ->
+            %% start with the first 
+            %% player after the button
+            Players = seat:get_seats(Game, B, ?PS_PLAY),
+            hd(Players)
+    end.
 
 ask_for_blind(Game, Ctx, N, Amount, State) ->
   Seat = seat:get_seat(Game, N),
