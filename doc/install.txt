@@ -119,4 +119,53 @@ driver_select(0x000001ed, 1024, ERL_DRV_READ ERL_DRV_USE, 1) by tcp_inet driver 
 The Erlang VM hardwires the definition of FD_SETSIZE even when using epoll, kqueue, etc. To test a significantly higher number of games you need to both up 'ulimit -n 10240' and recompile Erlang after changing the value of FD_SETSIZE in your system headders if you get the above error. 
 
 FD_SETSIZE defaults to 1024 on Mac OSX, for example, and I would change it to 10240.
+====================================
+Pass history:
+(distributed_test@ujacy)3> dmb:run(5000,3,20).
+=INFO REPORT==== 16-Oct-2014::18:47:55 ===
+dmb: exited successfully, result:{dmb,false,5000,
+                                      {1413,456265,33940},
+                                      1000,<0.603.0>,
+                                      [797798780,798755552],
+                                      3,5000,25404,1}
+, 175.537288 seconds elapsed
 
+=INFO REPORT==== 16-Oct-2014::18:47:55 ===
+dmb: exited successfully, result:{dmb,false,5000,
+                                      {1413,456265,33940},
+                                      1000,<0.603.0>,[],3,5000,25404,0}
+, 176.538107 seconds elapsed
+------------------------------------------------------------------------------
+(distributed_test@ujacy)3> dmb:run(6000,4,10).
+=INFO REPORT==== 17-Oct-2014::13:27:32 ===
+dmb: exited successfully, result:{dmb,false,6000,
+                                      {1413,523411,576647},
+                                      1000,<0.636.0>,
+                                      [797996827,798755552,798042387,
+                                       797212059,799210267,797798724,
+                                       797798780],
+                                      4,6000,30405,3}
+, 209.99042699999998 seconds elapsed
+
+=INFO REPORT==== 17-Oct-2014::13:27:32 ===
+dmb: exited successfully, result:{dmb,false,6000,
+                                      {1413,523411,576647},
+                                      1000,<0.636.0>,
+                                      [797996827,798755552,798042387,
+                                       797212059,799210267,797798724],
+                                      4,6000,30405,2}
+, 210.992134 seconds elapsed
+
+=INFO REPORT==== 17-Oct-2014::13:27:32 ===
+dmb: exited successfully, result:{dmb,false,6000,
+                                      {1413,523411,576647},
+                                      1000,<0.636.0>,
+                                      [797996827,798755552,798042387],
+                                      4,6000,30405,1}
+, 211.992434 seconds elapsed
+
+=INFO REPORT==== 17-Oct-2014::13:27:32 ===
+dmb: exited successfully, result:{dmb,false,6000,
+                                      {1413,523411,576647},
+                                      1000,<0.636.0>,[],4,6000,30405,0}
+, 212.993361 seconds elapsed

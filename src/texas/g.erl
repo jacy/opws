@@ -189,7 +189,7 @@ watch(Game, Ctx, R) ->
   },
 
   gen_server:cast(R#watch.player, Detail),
-%%   notify_player_state(R#watch.player, Game),
+	notify_player_state(R#watch.player, Game),
   
   if Ctx#texas.stage < ?GS_FLOP 
 		-> ok ;

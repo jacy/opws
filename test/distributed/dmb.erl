@@ -156,6 +156,7 @@ wait_for_games(Data)
     T2 = erlang:now(),
     Elapsed = timer:now_diff(T2, T1) / 1000 / 1000,
 	timer:sleep(1000), % make sure other logs not showing up anymore.
+	stats:dump_stat(),
     error_logger:info_msg("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]).
 
 setup() ->
@@ -183,7 +184,7 @@ cleanup() ->
 %%% and then run #Games on them. Works well on a multicore server.
 
 run(Games, Lobbys, BotServers) ->
-    run(Games, Lobbys, BotServers, none).
+    run(Games, Lobbys, BotServers, 60*1000*10).
 
 run(Games, Lobbys, BotServers, Interval) 
   when is_integer(Games),
@@ -235,7 +236,7 @@ start_game_slaves(N) ->
 
 common_args() ->
 	Path = code:get_path(),
-    "+K true -smp disable -pz " ++ string:join(Path, " ").
+    "-P 2621430 +K true -smp disable -pz " ++ string:join(Path, " ").
 
 start_slave_node(Name, Args) ->
     case slave:start_link(net_adm:localhost(), Name, Args) of

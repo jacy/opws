@@ -82,11 +82,13 @@ terminate(_Reason, Bot) ->
     catch gen_tcp:close(Bot#bot.socket),
     stats:sum(bots_disconnected, 1),
     stats:add(total_bots_disconnected, 1),
+	stats:dump_stat(),
     ok.
 
 handle_cast(Event = {'CONNECT', Host, Port}, Bot) ->
     case tcp_server:start_client(Host, Port, 1024) of
         {ok, Sock} ->
+			stats:add(tcp_connections, 1),
             {noreply, Bot#bot{ socket = Sock }};
         {error, E} when E == eaddrnotavail; 
                         E == econnrefused ->

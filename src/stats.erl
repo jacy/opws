@@ -10,7 +10,7 @@
 
 -export([start/0, start/1, start/2, stop/0,
          avg/2, sum/2, min/2, max/2, dump/0,
-         add/2, test/0, start_game/1,end_game/1
+         add/2, test/0, dump_stat/0
         ]).
 
 -include("common.hrl").
@@ -62,14 +62,11 @@ min(Id, Value) ->
 max(Id, Value) ->
     gen_server:cast(?STATS, {'MAX', Id, Value}).
 
-start_game(GID) ->
-    gen_server:cast(?STATS, {'START_GAME', GID}).
-
-end_game(GID) ->
-    gen_server:cast(?STATS, {'END_GAME', GID}).
-
 dump() ->
     gen_server:cast(?STATS, 'DUMP').
+
+dump_stat() ->
+    gen_server:cast(?STATS, 'DUMP STATS').
 
 init([Time, Trace]) ->
     process_flag(trap_exit, true),
@@ -102,14 +99,6 @@ terminate(_Reason, _Data) ->
 
 handle_cast(stop, Data) ->
     {stop, normal, Data};
-
-handle_cast({'START_GAME', GID}, Data) ->
-    NewGame = gb_trees:insert(GID, 1, Data#stats.games),
-    {noreply, Data#stats{ games=NewGame}};
-
-handle_cast({'END_GAME', GID}, Data) ->
-    NewGame = gb_trees:delete(GID, Data#stats.games),
-    {noreply, Data#stats{ games=NewGame}};
 
 handle_cast({'AVG', Id, New}, Data) ->
     Old = case gb_trees:lookup(Id, Data#stats.avg) of
@@ -243,7 +232,6 @@ handle_info('DUMP STATS', Data) ->
                              ++ Max
                              ++ Avg
                              ++ Min
-							 ++ gb_trees:to_list(Data#stats.games)
                             ),
     {noreply, Data1};
 

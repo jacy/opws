@@ -112,6 +112,7 @@ setup_observer(Parent, GID, Host, Port, Trace)
 
 setup_observer(Parent, GID, Host, Port, Trace) ->
     %% setup observer bot
+	%% 1 game only 1 observer
     {ok, Obs} = bot:start(Host, Port, observer, [Parent, Trace, 1]),
     %% watch game
     bot:watch(Obs, GID),
