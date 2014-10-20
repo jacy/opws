@@ -1,1 +1,1 @@
-less xx.log | egrep 'eaddrinuse|bad|timeout|noproc|nocatch|_limit|key_exist'
+less $1 | egrep 'eaddrinuse|bad|timeout|noproc|nocatch|system_limit|key_exist'

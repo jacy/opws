@@ -3,7 +3,7 @@
 -export([is_process_alive/1,
          init_db_slave/1,
          get_random_pid/1,
-		 nowstring/0
+		 nowstring/0, procs/0
         ]).
 
 is_process_alive(Pid) 
@@ -40,3 +40,19 @@ get_random_pid(Name) ->
             {_,_,X} = erlang:now(),
             {ok, lists:nth((X rem length(L)) + 1, L)}
     end.
+
+%%% Largest memory hogs first!
+
+procs() ->
+    F = fun(Pid) ->
+                Name = case process_info(Pid, registered_name) of
+                           [] ->
+                               Pid;
+                           Other ->
+                               element(2, Other)
+                       end,
+                Heap = element(2, process_info(Pid, total_heap_size)),
+                Stack = element(2, process_info(Pid, stack_size)),
+                {Name, {Heap, Stack}}
+        end,
+    lists:reverse(lists:keysort(2, lists:map(F, processes()))).

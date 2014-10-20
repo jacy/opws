@@ -404,7 +404,7 @@ get_nick(Player, Data) when is_pid(Player) ->
     true ->
       Data#pdata.nick;
     _ ->
-      gen_server:call(Player, 'NICK QUERY')
+      gen_server:call(Player, 'NICK QUERY',?NICK_QUERY_TIMEOUT)
   end;
   
 get_nick(_, _) ->

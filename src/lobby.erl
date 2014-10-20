@@ -137,7 +137,7 @@ handle_call(Event, From, Server) ->
     {noreply, Server}.
 
 handle_info({'EXIT', Pid, Reason}, Server) ->
-  ?LOG([{server_error, {pid, Pid}, {reason, Reason}}]),
+  ?ERROR([{server_error, {pid, Pid}, {reason, Reason}, {total_processes, length(erlang:processes())}}]),
   {noreply, Server};
 
 handle_info(Info, Server) ->

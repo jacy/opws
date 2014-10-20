@@ -79,11 +79,14 @@ stop(Ref) ->
 terminate(_Reason, Bot) ->
     Mod = Bot#bot.mod,
     Mod:stop(Bot#bot.data),
+	if Bot#bot.socket == undefined ->
+		stats:dump_stat();
+	   true ->
+		   ok
+	end,
     catch gen_tcp:close(Bot#bot.socket),
     stats:sum(bots_disconnected, 1),
-    stats:add(total_bots_disconnected, 1),
-	stats:dump_stat(),
-    ok.
+    stats:add(total_bots_disconnected, 1).
 
 handle_cast(Event = {'CONNECT', Host, Port}, Bot) ->
     case tcp_server:start_client(Host, Port, 1024) of

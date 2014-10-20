@@ -12,7 +12,7 @@
 -include("ircdb.hrl").
 -include("pp.hrl").
 -include("schema.hrl").
--define(START_PORT, 2000).
+-define(START_PORT, 3100).
 -record(mb, {
           host, 
           port,
@@ -62,7 +62,6 @@ handle_cast({'RUN', Game, Barrier, Delay, Trace}, Data)
     Game1 = mbu:fix_usrs(Game),
     mbu:update_players(Game1),
 	
-	error_logger:info_msg("Gid:~p~n",  [Game1#irc_game.id]),
 	?LOG({start_game,Game}),
 	
     Host = Data#mb.host,

@@ -5,7 +5,7 @@
 %%%
 
 -export([run/3, run/4, test/1, test/2, test/3, 
-         debug/1, setup/0, cleanup/0, procs/0]).
+         debug/1, setup/0, cleanup/0, wait_for_group/1]).
 
 -include("ircdb.hrl").
 -include("common.hrl").
@@ -113,6 +113,7 @@ test(DB, Key, Max, N, Data) ->
     Trace = Data#dmb.trace,
     gen_server:cast(Mb, {'RUN', Game, Data#dmb.barrier, Delay, Trace}),
     Count = Game#irc_game.player_count,
+	stats:add({mb_tcp_count, Mb}, Count+1), % 1 game has 1 observer
     Data1 = Data#dmb{
               game_count = Data#dmb.game_count + 1,
               player_count = Data#dmb.player_count + Count
@@ -220,7 +221,7 @@ start_bot_slaves(N) ->
     Node = start_slave_node(Name, Args),
     timer:sleep(100),
     R = rpc:call(Node, bb, run, []),
-	?LOG({"Remote call node:", Node , "! Got result:", R}),
+    error_logger:info_msg("Start bot:~w, Got result:~w ~n", [Node, R]),
     start_bot_slaves(N - 1).
 
 start_game_slaves(0) ->
@@ -231,16 +232,18 @@ start_game_slaves(N) ->
     Args = common_args(),
     Node = start_slave_node(Name, Args),
     timer:sleep(100),
-    rpc:call(Node, mb, run, []),
+    R = rpc:call(Node, mb, run, []),
+    error_logger:info_msg("Start game launcher:~w, Got result:~w ~n", [Node, R]),
     start_game_slaves(N - 1).
 
 common_args() ->
 	Path = code:get_path(),
-    "-P 2621430 +K true -smp disable -pz " ++ string:join(Path, " ").
+    "+P 131072 +K true -smp disable -pz " ++ string:join(Path, " ").
 
 start_slave_node(Name, Args) ->
     case slave:start_link(net_adm:localhost(), Name, Args) of
         {ok, Node} ->
+			timer:sleep(1000),
             rpc:call(Node, mnesia, start, []),
             rpc:call(Node, mnesia, change_config, [extra_db_nodes, [node()]]),
             timer:sleep(1000),
@@ -262,19 +265,3 @@ wait_for_group(Name) ->
         _ ->
             ok
     end.
-
-%%% Largest memory hogs first!
-
-procs() ->
-    F = fun(Pid) ->
-                Name = case process_info(Pid, registered_name) of
-                           [] ->
-                               Pid;
-                           Other ->
-                               element(2, Other)
-                       end,
-                Heap = element(2, process_info(Pid, total_heap_size)),
-                Stack = element(2, process_info(Pid, stack_size)),
-                {Name, {Heap, Stack}}
-        end,
-    lists:reverse(lists:keysort(2, lists:map(F, processes()))).

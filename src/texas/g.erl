@@ -36,7 +36,7 @@ broadcast_player_state(Game) ->
         Player = pp:id_to_player(S#seat_state.player),
         Nick = case is_pid(Player) of
           true ->
-            gen_server:call(Player, 'NICK QUERY');
+            gen_server:call(Player, 'NICK QUERY', ?NICK_QUERY_TIMEOUT);
           false ->
             undefined
         end,
@@ -51,7 +51,7 @@ notify_player_state(Player, Game) ->
         Pid = pp:id_to_player(S#seat_state.player),
         Nick = case is_pid(Pid) of
           true ->
-            gen_server:call(Pid, 'NICK QUERY');
+            gen_server:call(Pid, 'NICK QUERY',?NICK_QUERY_TIMEOUT);
           false ->
             undefined
         end,
@@ -318,7 +318,7 @@ set_state(Game, SeatNum, State)
       state = State,
       player = Seat#seat.pid,
       inplay = Seat#seat.inplay,
-      nick = gen_server:call(Seat#seat.player, 'NICK QUERY')
+      nick = gen_server:call(Seat#seat.player, 'NICK QUERY',?NICK_QUERY_TIMEOUT)
      },
     broadcast(Game1, Event).
 
@@ -347,7 +347,7 @@ notify_state(Game, SeatNum)
       state = Seat#seat.state,
       player = Seat#seat.pid,
       inplay = Seat#seat.inplay,
-      nick = gen_server:call(Seat#seat.player, 'NICK QUERY')
+      nick = gen_server:call(Seat#seat.player, 'NICK QUERY',?NICK_QUERY_TIMEOUT)
      },
     broadcast(Game, Event).
 

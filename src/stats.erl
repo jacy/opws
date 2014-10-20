@@ -232,6 +232,7 @@ handle_info('DUMP STATS', Data) ->
                              ++ Max
                              ++ Avg
                              ++ Min
+							 ++  [{total_processes, length(erlang:processes())}]
                             ),
     {noreply, Data1};
 

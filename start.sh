@@ -14,4 +14,4 @@ sudo chown -R jacy:jacy $MNESIA_DIR
 sudo mkdir -p $LOG_DIR
 sudo chown -R jacy:jacy $LOG_DIR
 
-erl -pa ebin  deps/*/ebin  -name $NODE_NAME -setcookie $COOKIE -mnesia dir '"'$MNESIA_DIR'"' -s $2 -detached
+erl +P 4194304 -pa ebin  deps/*/ebin  -name $NODE_NAME -setcookie $COOKIE -mnesia dir '"'$MNESIA_DIR'"' -s $2 -detached

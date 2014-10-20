@@ -24,6 +24,7 @@
 -define(PLAYER_TIMEOUT, 15000).
 -define(PLAYER_OUT_TIMEOUT, 15000).
 -define(START_DELAY, 1000).
+-define(NICK_QUERY_TIMEOUT, 20000).
 
 %%% Error codes
 

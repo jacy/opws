@@ -144,7 +144,7 @@ join(Game, R) ->
             player = PID,
             seat = R#join.seat,
             amount = R#join.amount,
-            nick = gen_server:call(R#join.player, 'NICK QUERY'),
+            nick = gen_server:call(R#join.player, 'NICK QUERY',?NICK_QUERY_TIMEOUT),
             proc = self()
           },
           %% take seat and broadcast the fact
