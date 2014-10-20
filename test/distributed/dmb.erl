@@ -238,7 +238,7 @@ start_game_slaves(N) ->
 
 common_args() ->
 	Path = code:get_path(),
-    "+P 131072 +K true -smp disable -pz " ++ string:join(Path, " ").
+    "+P 65536 +K true -smp disable -pz " ++ string:join(Path, " ").
 
 start_slave_node(Name, Args) ->
     case slave:start_link(net_adm:localhost(), Name, Args) of
