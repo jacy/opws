@@ -9,3 +9,4 @@ erl_crash.dump
 /*.project
 /Mnesia.*/
 /$MNESIA_DIR/
+/testbin/

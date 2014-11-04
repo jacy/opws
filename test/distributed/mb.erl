@@ -49,8 +49,11 @@ init([Trace]) ->
 stop(Ref) ->
     gen_server:cast(Ref, stop).
 
+terminate(normal, _Data) ->
+    ok;
+
 terminate(Reason, _Data) ->
-	?ERROR({terminate, Reason}),
+	?ERROR([{"terminate game launchers", Reason}]),
     ok.
 
 handle_cast(stop, Data) ->
@@ -201,7 +204,12 @@ handle_info({'CARDGAME EXIT', _, _}, Data) ->
 
 
 handle_info({'DOWN', _Ref, process, _Pid,  Reason}, Data) ->
-    ?ERROR([{"Child Exit With Reason:", Reason}]),
+	case Reason of 
+		normal ->
+			skip;
+		_ ->
+   		 ?ERROR([{"Child Exit With Reason:", Reason}])
+	end,
     {noreply, Data};
 
 handle_info(Info, Data) ->
@@ -259,6 +267,7 @@ run(Host, TestMode) ->
     ok.
 
 run() ->
+	?SET_LOG_FILE(),
     run(localhost, false).
 
 next_port(Host) ->

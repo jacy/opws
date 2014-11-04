@@ -1,6 +1,9 @@
+COOKIE="donotbesameasrealgame"
+
 sudo mkdir -p testbin
 sudo chown -R jacy:jacy testbin
-erl -pa ebin -make
+
+sh log.sh $COOKIE -detached
 
 #http://www.lognormal.com/blog/2012/09/27/linux-tcpip-tuning/
 #Modify TIME_WAIT time so address can be quickly reuse.
@@ -19,4 +22,11 @@ sudo sysctl -w net.ipv4.ip_local_port_range="10000 65535"
 
 sudo /etc/init.d/networking restart
 
-erl +P 4194304 -pa ebin  testbin --setcookie donotbesameasrealgame -sname distributed_test -mnesia dump_log_write_threshold 50000 -mnesia dc_dump_limit 40  -env ERL_MAX_ETS_TABLES 500000 +t 1048576
+#dc_dump_limit
+	#This variable controls how often disc_copies tables are dumped from 
+	#memory. The default value is 4, which means if the size of the log is greater 
+	#than the size of table / 4, then a dump occurs. To make table dumps happen
+	#more often, increase the value. 
+	
+erl -pa ebin -make  #compile to testbin
+erl +P 4194304 -pa ebin  testbin deps/*/ebin -setcookie $COOKIE -sname distributed_test -env ERL_MAX_ETS_TABLES 1000000 +t 1048576 -eval 'net_kernel:connect_node(log_roller_server@ujacy).'  -s log_roller start

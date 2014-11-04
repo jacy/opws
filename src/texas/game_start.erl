@@ -30,7 +30,6 @@ game_start(Game, Ctx, {timeout, _, _}) ->
 
 game_start(Game, Ctx, {'EXIT', Barrier, _}) 
   when Barrier == Game#game.barrier ->
-	?FLOG("------Starting games---------"),
    	Game1 = g:notify_start_game(Game),
     {stop, Game1, Ctx#texas{stage=?GS_GAME_START}};
 

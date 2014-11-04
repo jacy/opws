@@ -224,16 +224,15 @@ handle_info('DUMP STATS', Data) ->
               min = gb_trees:empty(),
               start = End
              },
-    error_logger:info_report([{module, ?MODULE}, 
-                              {elapsed, Elapsed}]
+    io:format("~p~n",[[{elapsed, Elapsed}]
                              ++ Add
                              ++ Sum
                              ++ SumPS
                              ++ Max
                              ++ Avg
                              ++ Min
-							 ++  [{total_processes, length(erlang:processes())}]
-                            ),
+			     ++  [{memory, erlang:memory()}]
+		     ]),
     {noreply, Data1};
 
 handle_info(Info, Data) ->

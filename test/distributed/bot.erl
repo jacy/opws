@@ -76,7 +76,13 @@ init([Host, Port, Mod, Args]) ->
 stop(Ref) ->
     gen_server:cast(Ref, stop).
 
-terminate(_Reason, Bot) ->
+terminate(Reason, Bot) ->
+	case Reason of
+		normal ->
+			good;
+		_ ->
+			?ERROR([{bot_stopped, Reason},{loop_data, Bot},{process_info, process_info(self())}])
+	end,
     Mod = Bot#bot.mod,
     Mod:stop(Bot#bot.data),
 	if Bot#bot.socket == undefined ->

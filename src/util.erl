@@ -3,7 +3,7 @@
 -export([is_process_alive/1,
          init_db_slave/1,
          get_random_pid/1,
-		 nowstring/0, procs/0
+		 nowstring/0, procs/0, wait_for_group/1
         ]).
 
 is_process_alive(Pid) 
@@ -56,3 +56,15 @@ procs() ->
                 {Name, {Heap, Stack}}
         end,
     lists:reverse(lists:keysort(2, lists:map(F, processes()))).
+
+%%% Wait for a process group to become available
+
+wait_for_group(Name) ->
+    case pg2:get_members(Name) of
+        {error, _} ->
+            error_logger:info_msg("Group ~p is not available. Retrying in 1 second.~n", [Name]),
+            timer:sleep(1000),
+            wait_for_group(Name);
+        _ ->
+            ok
+    end.

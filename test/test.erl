@@ -29,7 +29,6 @@ generator_test_() ->
 %%% SETUP FUNCTIONS %%%
 %%%%%%%%%%%%%%%%%%%%%%%
 start() ->
-	?SET_LOG_FILE(),
 	schema:install().
  
 stop(_) ->

@@ -22,10 +22,10 @@
          }).
 
 run() ->
+	?SET_LOG_FILE(),
     run(false).
 
 run(Trace) ->
-    mdb:start(),
     pg2:start(),
     gen_server:start(bb, [Trace], []).
 
@@ -45,6 +45,9 @@ init([Trace]) ->
 
 stop(Ref) ->
     gen_server:cast(Ref, stop).
+
+terminate(normal, _Data) ->
+    ok;
 
 terminate(Reason, _Data) ->
 	?ERROR([{"terminate bots", Reason}]),

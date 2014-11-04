@@ -1,7 +1,7 @@
 -define(FLOG(Msg), error_logger:info_msg(Msg)).
 -define(FLOG(Format, Data), error_logger:info_msg(Format,Data)).
--define(LOG(L), error_logger:info_report([{debug, {module, ?MODULE}, {line, ?LINE}, {self, self()}},L])).
--define(ERROR(L), error_logger:error_report([{debug, {module, ?MODULE}, {line, ?LINE}, {self, self()}},L])).
+-define(LOG(L), error_logger:info_report([{module, ?MODULE}, {line, ?LINE}, {self, self()},L])).
+-define(ERROR(L), error_logger:error_report([{module, ?MODULE}, {line, ?LINE}, {self, self()},L])).
 
 -define(MAX_RAISES, 3).
 -define(MAX_PLAYERS, 500000).
@@ -226,4 +226,4 @@
 				end()).
 
 -define(tcpsend(Protocol, Socket, Data), pp:send(Protocol, Socket, Data)).
--define(SET_LOG_FILE(), error_logger:logfile({open, "/var/log/erlang/" ++ atom_to_list(node()) ++ "_" ++ util:nowstring()})).
+-define(SET_LOG_FILE(), log_roller:start()).

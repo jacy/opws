@@ -47,7 +47,7 @@ context() ->
 
 stop(Game) 
   when is_record(Game, game) ->
-	?ERROR([terminate_game, {id, Game#game.gid}]),
+	?LOG([terminate_game, {id, Game#game.gid}]),
     Game1 = g:cancel_timer(Game),
     %% force players to leave
     g:kick(Game1),

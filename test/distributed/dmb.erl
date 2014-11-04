@@ -5,7 +5,7 @@
 %%%
 
 -export([run/3, run/4, test/1, test/2, test/3, 
-         debug/1, setup/0, cleanup/0, wait_for_group/1]).
+         debug/1, setup/0, cleanup/0]).
 
 -include("ircdb.hrl").
 -include("common.hrl").
@@ -32,7 +32,7 @@ debug(GameID) ->
     bb:run(),
     mb:run(localhost, true),
     gateway:start(node(), 4000, 500000),
-    error_logger:info_msg("Debugging ~p~n", [GameID]),
+    io:format("Debugging ~p~n", [GameID]),
     DB = mbu:opendb(),
     Data = #dmb{
       start_time = now(),
@@ -43,7 +43,7 @@ debug(GameID) ->
       started = length(pg2:get_members(?GAME_LAUNCHERS))
      },
     Data1 = test(DB, GameID, 1, 0, Data),
-    ?FLOG("dmb: waiting for games to end...~n"),
+    io:format("dmb: waiting for games to end...~n"),
     wait_for_games(Data1).
 
 %%% Simulate MaxGames concurrent games. Requires a set of 
@@ -70,7 +70,7 @@ test(MaxGames, Delay, Trace)
        is_atom(Trace) ->
     process_flag(trap_exit, true),
     gateway:start(node(), 4000, 500000),
-    error_logger:info_msg("Simulating gameplay with ~p games...~n", [MaxGames]),
+    io:format("Simulating gameplay with ~p games...~n", [MaxGames]),
     DB = mbu:opendb(),
     Key = dets:first(DB),
 
@@ -83,20 +83,20 @@ test(MaxGames, Delay, Trace)
       barrier = Barrier,
       started = length(pg2:get_members(?GAME_LAUNCHERS))
      },
-    error_logger:info_msg("== DB ~p~n", [DB]),
-    error_logger:info_msg("== Key ~p~n", [Key]),
-    error_logger:info_msg("== Max ~p~n", [MaxGames]),
-    error_logger:info_msg("== Data ~p~n", [Data]),
+    io:format("== DB ~p~n", [DB]),
+    io:format("== Key ~p~n", [Key]),
+    io:format("== Max ~p~n", [MaxGames]),
+    io:format("== Data ~p~n", [Data]),
     Data1 = test(DB, Key, MaxGames, 0, Data),
-    error_logger:info_msg("dmb: waiting for games to end...~n"),
+    io:format("dmb: waiting for games to end...~n"),
     wait_for_games(Data1).
 
 go(Barrier, N) ->
-    error_logger:info_msg("dmb: ~p games will be launching simultaneously~n", [N]),
+    io:format("dmb: ~p games will be launching simultaneously~n", [N]),
     gen_server:cast(Barrier, {'TARGET', N}).
 
 test(DB, '$end_of_table', _, N, Data) ->
-    error_logger:info_msg("dmb: End of database reached. No more games to launch!~n"),
+    io:format("dmb: End of database reached. No more games to launch!~n"),
     go(Data#dmb.barrier, N),
     mbu:closedb(DB),
     Data;
@@ -120,7 +120,7 @@ test(DB, Key, Max, N, Data) ->
              },
     if
         (Data1#dmb.game_count rem 50) == 0 ->
-            ?FLOG("~w games started, ~w players~n", [Data1#dmb.game_count, Data1#dmb.player_count]);
+            io:format("~w games started, ~w players~n", [Data1#dmb.game_count, Data1#dmb.player_count]);
         true ->
             ok
     end,
@@ -132,7 +132,7 @@ test(DB, Key, Max, N, Data) ->
 
 wait_for_games(Data)
   when is_record(Data, dmb) ->
-	error_logger:info_msg("wait_for_games with dmb: ~p~n", [Data]),
+	io:format("wait_for_games with dmb: ~p~n", [Data]),
     receive
         {'EXIT', _, Reason} ->
             Data1 = Data#dmb{ finished = Data#dmb.finished + 1 },
@@ -150,15 +150,14 @@ wait_for_games(Data)
                     wait_for_games(Data2)
             end;
         Other ->
-            error_logger:info_msg("wait_for_games, receive other message: ~p~n", [Other]),
+            io:format("wait_for_games, receive other message: ~p~n", [Other]),
             wait_for_games(Data)
     end,
     T1 = Data#dmb.start_time,
     T2 = erlang:now(),
     Elapsed = timer:now_diff(T2, T1) / 1000 / 1000,
-	timer:sleep(1000), % make sure other logs not showing up anymore.
 	stats:dump_stat(),
-    error_logger:info_msg("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]).
+    io:format("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]).
 
 setup() ->
     schema:install(),
@@ -170,14 +169,14 @@ cleanup() ->
     mdb:start(),
     case mdb:wait_for_tables([tab_game_config], 10000) of 
         ok ->
-            ?FLOG("dmb:cleanup: deleting game info...~n"),
+            io:format("dmb:cleanup: deleting game info...~n"),
             mdb:clear_table(tab_game_xref),
             mdb:clear_table(tab_timeout_history),
             counter:reset(game),
             CC = #tab_cluster_config{ id = 0, enable_dynamic_games = true},
             ok = mdb:write(CC);
         Any ->
-            ?FLOG("dmb:cleanup: mnesia error ~w~n", [Any])
+            io:format("dmb:cleanup: mnesia error ~w~n", [Any])
     end,
     ok.
 
@@ -185,25 +184,26 @@ cleanup() ->
 %%% and then run #Games on them. Works well on a multicore server.
 
 run(Games, Lobbys, BotServers) ->
-    run(Games, Lobbys, BotServers, 60*1000*10).
+    run(Games, Lobbys, BotServers, 20*1000).
 
 run(Games, Lobbys, BotServers, Interval) 
   when is_integer(Games),
        is_integer(Lobbys),
        is_integer(BotServers) ->
+	error_logger:tty(false),
 	?SET_LOG_FILE(),
-	error_logger:info_msg("Setting up slave servers, please wait..."),
+	io:format("Setting up slave servers, please wait...~n"),
     mdb:start(),
     pg2:start(),
     start_bot_slaves(BotServers),
     start_game_slaves(Lobbys),
-    error_logger:info_msg("cluster: ~p~n", [nodes()]),
-    wait_for_group(?PLAYER_LAUNCHERS),
-    wait_for_group(?GAME_LAUNCHERS),
-    wait_for_group(?LOBBYS),
-    error_logger:info_msg("player launchers  : ~p~n", [pg2:get_members(?PLAYER_LAUNCHERS)]),
-    error_logger:info_msg("game launchers : ~p~n", [pg2:get_members(?GAME_LAUNCHERS)]),
-    error_logger:info_msg("lobbys   : ~p~n", [pg2:get_members(?LOBBYS)]),
+    io:format("cluster: ~p~n", [nodes()]),
+    util:wait_for_group(?PLAYER_LAUNCHERS),
+    util:wait_for_group(?GAME_LAUNCHERS),
+    util:wait_for_group(?LOBBYS),
+    io:format("player launchers  : ~p~n", [pg2:get_members(?PLAYER_LAUNCHERS)]),
+    io:format("game launchers : ~p~n", [pg2:get_members(?GAME_LAUNCHERS)]),
+    io:format("lobbys   : ~p~n", [pg2:get_members(?LOBBYS)]),
     if 
         Interval =/= none ->
             stats:start(Interval);
@@ -221,7 +221,7 @@ start_bot_slaves(N) ->
     Node = start_slave_node(Name, Args),
     timer:sleep(100),
     R = rpc:call(Node, bb, run, []),
-    error_logger:info_msg("Start bot:~w, Got result:~w ~n", [Node, R]),
+    io:format("Start bot:~w, Got result:~w ~n", [Node, R]),
     start_bot_slaves(N - 1).
 
 start_game_slaves(0) ->
@@ -229,39 +229,38 @@ start_game_slaves(0) ->
 
 start_game_slaves(N) ->
     Name = list_to_atom("lobby" ++ integer_to_list(N)),
-    Args = common_args(),
+    Args = common_args() ++ menisa_args(),
     Node = start_slave_node(Name, Args),
+	start_mmesia_slave(Node),
     timer:sleep(100),
     R = rpc:call(Node, mb, run, []),
-    error_logger:info_msg("Start game launcher:~w, Got result:~w ~n", [Node, R]),
+    io:format("Start game launcher:~w, Got result:~w ~n", [Node, R]),
     start_game_slaves(N - 1).
 
 common_args() ->
 	Path = code:get_path(),
-    "+P 65536 +K true -smp disable -pz " ++ string:join(Path, " ").
+    "+P 65536 +K true -smp disable -setcookie " ++  atom_to_list(erlang:get_cookie()) ++ " -pz " ++ string:join(Path, " ").
+
+menisa_args() ->
+    "  -env ERL_MAX_ETS_TABLES 1000000".
+    %" -mnesia dump_log_write_threshold 1000000 -mnesia dc_dump_limit 100  -env ERL_MAX_ETS_TABLES 1000000".
+
+start_mmesia_slave(Node) ->
+	timer:sleep(1000),
+    rpc:call(Node, mnesia, start, []),
+    rpc:call(Node, mnesia, change_config, [extra_db_nodes, [node()]]),
+    timer:sleep(1000),
+	Node.
 
 start_slave_node(Name, Args) ->
-    case slave:start_link(net_adm:localhost(), Name, Args) of
+	case slave:start_link(net_adm:localhost(), Name, Args) of
         {ok, Node} ->
-			timer:sleep(1000),
-            rpc:call(Node, mnesia, start, []),
-            rpc:call(Node, mnesia, change_config, [extra_db_nodes, [node()]]),
-            timer:sleep(1000),
-            Node;
+			Node;
+		{error,{already_running, Node}} ->
+			io:format("Already started slave node: ~p ~n", [Name]),
+			Node;
         Reason ->
-            error_logger:info_msg("Failed to start slave node: ~p. Retrying in 1 second.~n", [Reason]),
+            io:format("Failed to start slave node: ~p, Reason:~p, Retrying in 1 second.~n", [Name, Reason]),
             timer:sleep(1000),
             start_slave_node(Name, Args)
-    end.
-
-%%% Wait for a process group to become available
-
-wait_for_group(Name) ->
-    case pg2:get_members(Name) of
-        {error, _} ->
-            error_logger:info_msg("Group ~p is not available. Retrying in 1 second.~n", [Name]),
-            timer:sleep(1000),
-            wait_for_group(Name);
-        _ ->
-            ok
     end.

@@ -57,6 +57,7 @@ process(R = #notify_join{}, Data) ->
     Seats1 = gb_trees:insert(R#notify_join.player, 
                              R#notify_join.seat, 
                              Data#obs.seats),
+	?FLOG("Receive Player joined:~p ~n",[R#notify_join.player]),
     Data#obs{ seats = Seats1 };
 
 process(R = #notify_win{}, Data) ->

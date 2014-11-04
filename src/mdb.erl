@@ -48,28 +48,35 @@ dirty_index_read(T, K, F) ->
 	mnesia:dirty_index_read(T, K, F).
 
 update_balance(K, ChangeAmount) ->
-    V1 = trunc(ChangeAmount * 10000),
 	F = fun() ->
-		R = case mnesia:wread({tab_balance, K}) of
+		do_update_balance(K,ChangeAmount)
+	end,
+    transaction(F).
+
+do_update_balance(K, ChangeAmount) ->
+	R = case mnesia:wread({tab_balance, K}) of
 			[] -> 
 				#tab_balance{pid=K,amount=0};
 			[B] ->
 				B
 		end,
-        NewBalance = R#tab_balance.amount + V1,
+        NewBalance = R#tab_balance.amount + trunc(ChangeAmount * 10000),
 		if 
 			NewBalance < 0 -> 
 				mnesia:abort({error, not_enough_money});
         	true -> 
         		mnesia:write(R#tab_balance{amount = NewBalance})
-		end
+		end.
+
+update_inplay(GID, PID, ChangeAmount) ->
+	F = fun() ->
+		do_update_inplay(GID, PID, ChangeAmount)
 	end,
     transaction(F).
 
-update_inplay(GID, PID, ChangeAmount) ->
+do_update_inplay(GID, PID, ChangeAmount) ->
 	K = {GID,PID},
     V1 = trunc(ChangeAmount * 10000),
-	F = fun() ->
 		R = case mnesia:wread({tab_inplay, K}) of
 			[] -> 
 				#tab_inplay{gidpid=K, amount=0};
@@ -82,15 +89,13 @@ update_inplay(GID, PID, ChangeAmount) ->
 				mnesia:abort({error, not_enough_money});
         	true -> 
         		mnesia:write(R#tab_inplay{amount = NewBalance})
-		end
-	end,
-    transaction(F).
+		end.
 
 buy_in(GID, PID, Amt) when is_number(GID),is_number(PID),is_number(Amt) ->
 	F = fun() ->
 			%% When a child transaction aborts, the caller of the child transaction will get the return value {aborted, Reason}
-			re_abort(update_balance(PID, -Amt)),
-			re_abort(update_inplay(GID, PID, Amt))
+			do_update_balance(PID, -Amt),
+			do_update_inplay(GID, PID, Amt)
 	end,
 	transaction(F).
 		   
@@ -102,12 +107,6 @@ wrap_result(R) ->
 		{atomic, V} -> V;
 		{aborted, {throw, Error}} -> Error;
 		{aborted, Reason} -> Reason
-	end.
-
-re_abort(R) ->
-	case R of 
-		ok -> ok;
-		Error -> mnesia:abort(Error)
 	end.
 
 delete(T, K) ->
