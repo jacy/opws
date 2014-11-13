@@ -4,7 +4,7 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--export([start/1, stop/1, stop/2, socket/2]).
+-export([start/3, stop/1, stop/2, socket/2]).
 
 -export([create/5, update_photo/2]).
 
@@ -18,19 +18,18 @@
           playing = gb_trees:empty(),
           watching = gb_trees:empty(),          
           zombie = 0, % on autoplay until game ends
-          self,
           nick = undefined,
           photo = undefined
          }).
 
-start(PID) ->
-	gen_server:start({global, {player, PID}}, player, [PID], []).
+start(PID,Nick,Photo)->
+	gen_server:start({global, {player, PID}}, player, [PID,Nick,Photo], []).
 
-init([PID]) 
+init([PID,Nick,Photo]) 
   when is_integer(PID) ->
     process_flag(trap_exit, true),
     ok = create_runtime(PID, self()),
-    {ok, #pdata{ pid = PID, self = self() }}.
+    {ok, #pdata{ pid = PID,nick=Nick,photo=Photo}}.
 
 stop(Player) 
   when is_pid(Player) ->
@@ -64,7 +63,6 @@ handle_cast(R = #notify_join{}, Data) ->
                 true ->
                     Data
             end,
-    %% notify poker client
     forward_to_client(R, Data1),
     {noreply, Data1};
 
@@ -78,7 +76,7 @@ handle_cast(R = #notify_leave{}, Data) ->
                     Games1 = gb_trees:delete(Game, Games),
                     if
                         LastGame and Zombie ->
-                            player:stop(self(), "Loging out");
+                            player:stop(self(), normal);
                         true ->
                             ok
                     end,
@@ -117,7 +115,7 @@ handle_cast(#logout{}, Data) ->
   ?LOG([{logout, {playing, Data#pdata.playing}}]),
     case gb_trees:is_empty(Data#pdata.playing) of
         true ->
-            player:stop(self(), "Loging out"),
+            player:stop(self(), normal),
             {noreply, Data};
         _ ->
             %% delay until we leave our last game
@@ -126,9 +124,11 @@ handle_cast(#logout{}, Data) ->
     end;
 
 handle_cast(R = #join{ game = Game }, Data) ->
-  R1 = R#join{ player = self(), pid = Data#pdata.pid },
+  R1 = R#join{ player = self(), pid = Data#pdata.pid, nick=Data#pdata.nick },
+  ?LOG([{try_to_join, Data#pdata.pid}]),
   case gb_trees:is_defined(Game, Data#pdata.watching) of
     true ->
+      ?LOG([{can_join, Data#pdata.pid}]),
       gen_server:cast(Game, R1),
       {noreply, Data};
     _ ->
@@ -164,15 +164,15 @@ handle_cast(R, Data)
     end,
     {noreply, Data};
 
-handle_cast(#seat_query{ game = Game }, Data) ->
-    L = gen_server:call(Game, 'SEAT QUERY'),
-    F = fun(R) -> 
-        Player = pp:id_to_player(R#seat_state.player),
-        Nick = get_nick(Player, Data),
-        forward_to_client(R#seat_state{ nick = Nick }, Data) 
-    end,
-    lists:foreach(F, L),
-    {noreply, Data};
+%% handle_cast(#seat_query{ game = Game }, Data) ->
+%%     L = gen_server:call(Game, 'SEAT QUERY'),
+%%     F = fun(R) -> 
+%%         Player = pp:id_to_player(R#seat_state.player),
+%%         Nick = get_nick(Player, Data),
+%%         forward_to_client(R#seat_state{ nick = Nick }, Data) 
+%%     end,
+%%     lists:foreach(F, L),
+%%     {noreply, Data};
 
 handle_cast(#player_query{ player = PID }, Data) ->
   Self = self(),
@@ -276,9 +276,6 @@ handle_cast(Event, Data) ->
 
 handle_call('ID', _From, Data) ->
     {reply, Data#pdata.pid, Data};
-
-handle_call('NICK QUERY', _From, Data) ->
-    {reply, Data#pdata.nick, Data};
 
 handle_call('PHOTO QUERY', _From, Data) ->
     {reply, Data#pdata.photo, Data};
@@ -399,16 +396,16 @@ leave_games([Game|Rest]) ->
                            }),
     leave_games(Rest).
 
-get_nick(Player, Data) when is_pid(Player) ->
-  case Player == self() of
-    true ->
-      Data#pdata.nick;
-    _ ->
-      gen_server:call(Player, 'NICK QUERY',?NICK_QUERY_TIMEOUT)
-  end;
-  
-get_nick(_, _) ->
-  undefined.
+%% get_nick(Player, Data) when is_pid(Player) ->
+%%   case Player == self() of
+%%     true ->
+%%       Data#pdata.nick;
+%%     _ ->
+%%       gen_server:call(Player, 'NICK QUERY',?NICK_QUERY_TIMEOUT)
+%%   end;
+%%   
+%% get_nick(_, _) ->
+%%   undefined.
 
 get_pid(Player, Data) when is_pid(Player) ->
   case Player == self() of

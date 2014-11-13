@@ -6,6 +6,7 @@
 					hand,    % cards
 					state,   % player state
 					muck = false,
+					nick,
 					cmd_que = [] % auto-play queue
 			 }).
 

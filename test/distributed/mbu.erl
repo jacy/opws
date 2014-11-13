@@ -28,7 +28,6 @@ create_players() ->
     create_players(DB, Key).
 
 create_players(DB, '$end_of_table') ->
-	?LOG({"--------END OF TABLE--------"}),
     closedb(DB);
 
 create_players(DB, Key) ->

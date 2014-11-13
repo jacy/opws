@@ -80,8 +80,8 @@ login(Info, Player, client_down, Args) ->
 login(Info, Player, player_busy, Args) ->
   login(Info, Player, player_online, Args);
 
-login(Info=#tab_player_info{pid=PID}, Player, player_offline, [_, _, Socket]) ->
-  {ok, Process} = player:start(PID),
+login(Info=#tab_player_info{pid=PID,nick=Nick,photo=Photo}, Player, player_offline, [_, _, Socket]) ->
+  {ok, Process} = player:start(PID,Nick,Photo),
   player:socket(Process, Socket),
   %% update player record
   Player1 = Player#tab_player {

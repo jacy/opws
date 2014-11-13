@@ -87,7 +87,8 @@ seat_query(Game, SeatNum, Acc) ->
       seat = SeatNum,
       state = Seat#seat.state,
       player = Seat#seat.pid,
-      inplay = Seat#seat.inplay
+      inplay = Seat#seat.inplay,
+	  nick = Seat#seat.nick
      },
     Acc1 = [SeatState|Acc],
     seat_query(Game, SeatNum - 1, Acc1).
@@ -130,25 +131,27 @@ join(Game, R) ->
   if
     %% seat is taken
     Seat#seat.state /= ?PS_EMPTY ->
+	  ?FLOG("Seat is taken seat:~p,seats:~p,Player:~p~n",[R#join.seat, Seats, PID]),
       Game;
     %% already sitting at this table
     OurPlayer ->
+	  ?FLOG("Already sitting at this table seat:~p,seats:~p,Player:~p~n",[R#join.seat,Seats,PID]),
       Game;
     true ->
       %% move buy-in amount from balance to inplay
       case mdb:buy_in(GID, PID, R#join.amount) of
         ok ->
+          Game1 = do_join(Game, R, R#join.state),
           %% tell player
           R1 = #notify_join{ 
             game = GID, 
             player = PID,
             seat = R#join.seat,
             amount = R#join.amount,
-            nick = gen_server:call(R#join.player, 'NICK QUERY',?NICK_QUERY_TIMEOUT),
+            nick = R#join.nick,
             proc = self()
           },
-          %% take seat and broadcast the fact
-          Game1 = do_join(Game, R, R#join.state),
+		  ?LOG([{broadcast_player_join,PID}]),
           broadcast(Game1, R1);
         Error ->
           %% no money or other error
@@ -176,6 +179,7 @@ do_join(Game, R, State) ->
                            pid = R#join.pid,
                            inplay = R#join.amount,
                            state = State,
+						   nick = R#join.nick,
                            hand = hand:new(Player, R#join.pid),
                            cmd_que = []
                           }),

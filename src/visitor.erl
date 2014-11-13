@@ -57,11 +57,11 @@ handle_cast(R, Data)
        is_record(R, start_game) ->
     {noreply, Data};
 
-handle_cast(#seat_query{ game = Game }, Data) ->
-    L = gen_server:call(Game, 'SEAT QUERY'),
-    F = fun(R) -> handle_cast(R, Data) end,
-    lists:foreach(F, L),
-    {noreply, Data};
+%% handle_cast(#seat_query{ game = Game }, Data) ->
+%%     L = gen_server:call(Game, 'SEAT QUERY'),
+%%     F = fun(R) -> handle_cast(R, Data) end,
+%%     lists:foreach(F, L),
+%%     {noreply, Data};
 
 handle_cast(#player_query{ player = PID }, Data) ->
     I = mdb:read(tab_player_info, PID),

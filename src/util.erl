@@ -2,7 +2,7 @@
 
 -export([is_process_alive/1,
          init_db_slave/1,
-         get_random_pid/1,
+         get_random_pid/1,start_syslog/0,
 		 nowstring/0, procs/0, wait_for_group/1
         ]).
 
@@ -68,3 +68,10 @@ wait_for_group(Name) ->
         _ ->
             ok
     end.
+
+start_syslog() ->
+	ok = application:start(sasl),
+        ok = application:set_env(syslog, msg_queue_limit, 500),
+        ok = application:set_env(syslog, async_limit, 65536 + 1),
+    ok = application:start(syslog),
+    ok.

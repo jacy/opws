@@ -66,7 +66,8 @@
 					seat,
 					amount,
 					pid,
-					state
+					state,
+					nick
 				 }).
 
 -define(CMD_LEAVE, 9).
@@ -274,7 +275,7 @@
 					state,
 					player,
 					inplay,
-          nick
+         			nick
 				 }).
 
 -define(CMD_YOU_ARE, 31).

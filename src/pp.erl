@@ -331,6 +331,7 @@ join() ->
              seat(),
              amount(),
              internal(),
+             internal(),
              internal()
             }).
 

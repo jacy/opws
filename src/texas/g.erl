@@ -33,15 +33,7 @@ notify_cancel_game(Game) ->
 broadcast_player_state(Game) ->
     L = seat:seat_query(Game),
     F = fun(S) -> 
-        Player = pp:id_to_player(S#seat_state.player),
-        Nick = case is_pid(Player) of
-          true ->
-            gen_server:call(Player, 'NICK QUERY', ?NICK_QUERY_TIMEOUT);
-          false ->
-            undefined
-        end,
-
-        broadcast(Game, S#seat_state{ nick = Nick })
+        broadcast(Game, S)
     end,
     lists:foreach(F, L).
 
@@ -49,20 +41,13 @@ notify_player_state(Player, Game) ->
     L = seat:seat_query(Game),
     F = fun(S) -> 
         Pid = pp:id_to_player(S#seat_state.player),
-        Nick = case is_pid(Pid) of
-          true ->
-            gen_server:call(Pid, 'NICK QUERY',?NICK_QUERY_TIMEOUT);
-          false ->
-            undefined
-        end,
-
         gen_server:cast(Player, #notify_seat_detail {
           game = S#seat_state.game,
           seat = S#seat_state.seat,
           state = S#seat_state.state,
           player = S#seat_state.player,
           inplay = S#seat_state.inplay,
-          nick = Nick,
+          nick = S#seat_state.nick,
 		  bet = pot:player_pending(Game#game.pot, Pid)
         })
     end,
@@ -318,7 +303,7 @@ set_state(Game, SeatNum, State)
       state = State,
       player = Seat#seat.pid,
       inplay = Seat#seat.inplay,
-      nick = gen_server:call(Seat#seat.player, 'NICK QUERY',?NICK_QUERY_TIMEOUT)
+      nick = Seat#seat.nick
      },
     broadcast(Game1, Event).
 
@@ -347,7 +332,7 @@ notify_state(Game, SeatNum)
       state = Seat#seat.state,
       player = Seat#seat.pid,
       inplay = Seat#seat.inplay,
-      nick = gen_server:call(Seat#seat.player, 'NICK QUERY',?NICK_QUERY_TIMEOUT)
+      nick = Seat#seat.nick
      },
     broadcast(Game, Event).
 

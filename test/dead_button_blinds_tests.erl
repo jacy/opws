@@ -260,7 +260,7 @@ modules() ->
 make_player(Nick) 
   when is_binary(Nick) ->
     {ok, ID} = player:create(Nick, Nick, Nick, <<"">>, 1000.0),
-    {ok, Pid} = player:start(ID),
+    {ok, Pid} = player:start(ID,Nick,<<"">>),
     {Pid, ID}.
 
 make_players(0, Acc) ->

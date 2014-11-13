@@ -1,6 +1,6 @@
 rm -rf ebin/*
 echo "Compiling...."
-erl -pa ebin -make
+rebar compile
 echo '==================================='
 echo 'Set up Mnesia Master: m1@127.0.0.1'
 ./start.sh m1 "cluster mnesia_master"

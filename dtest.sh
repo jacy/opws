@@ -3,8 +3,6 @@ COOKIE="donotbesameasrealgame"
 sudo mkdir -p testbin
 sudo chown -R jacy:jacy testbin
 
-sh log.sh $COOKIE -detached
-
 #http://www.lognormal.com/blog/2012/09/27/linux-tcpip-tuning/
 #Modify TIME_WAIT time so address can be quickly reuse.
 echo 1 | sudo tee /proc/sys/net/ipv4/tcp_fin_timeout
@@ -28,5 +26,6 @@ sudo /etc/init.d/networking restart
 	#than the size of table / 4, then a dump occurs. To make table dumps happen
 	#more often, increase the value. 
 	
+rebar compile
 erl -pa ebin -make  #compile to testbin
-erl +P 4194304 -pa ebin  testbin deps/*/ebin -setcookie $COOKIE -sname distributed_test -env ERL_MAX_ETS_TABLES 1000000 +t 1048576 -eval 'net_kernel:connect_node(log_roller_server@ujacy).'  -s log_roller start
+erl +P 4194304 -pa ebin  testbin deps/*/ebin -setcookie $COOKIE -sname distributed_test -env ERL_MAX_ETS_TABLES 1000000 +t 1048576
