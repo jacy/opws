@@ -42,7 +42,6 @@ stop(_) ->
 
 observe(R, Data) ->
     Data1 = process(R, Data),
-%%     maybe_report(R, Data1),
     if
         Data#obs.stop ->
             Next = stop,
@@ -53,11 +52,19 @@ observe(R, Data) ->
     end,
     {Next, Data1, Events}.
 
+
+%% Sometimes observers get to watch games after player already join
+%% Both notify_seat_detail and notify_join are marking palyer join.
+process(R = #notify_seat_detail{}, Data) ->
+    Seats1 = gb_trees:enter(R#notify_seat_detail.player, 
+                             R#notify_seat_detail.seat, 
+                             Data#obs.seats),
+    Data#obs{ seats = Seats1 };
+
 process(R = #notify_join{}, Data) ->
-    Seats1 = gb_trees:insert(R#notify_join.player, 
+    Seats1 = gb_trees:enter(R#notify_join.player, 
                              R#notify_join.seat, 
                              Data#obs.seats),
-	?FLOG("Receive Player joined:~p ~n",[R#notify_join.player]),
     Data#obs{ seats = Seats1 };
 
 process(R = #notify_win{}, Data) ->
@@ -85,18 +92,6 @@ process(R = #notify_start_game{}, Data) ->
     Data#obs.parent ! {'START', GID},
     Data#obs{ winners = gb_trees:empty(), games_started = Started + 1 };
 
-process(R = #notify_cancel_game{}, Data) ->
-    GID = R#notify_cancel_game.game,
-    N = Data#obs.cancel_count,
-    if
-        Data#obs.games_started > 0 ->
-            Data#obs.parent ! {'CANCEL', GID},
-            timer:sleep(50),
-            Data#obs{ stop = true, events = [#unwatch{ game = GID }] };
-        true ->
-            Data#obs{ cancel_count = N + 1 }
-    end;
-
 process(R = #notify_end_game{}, Data) ->
     GID = R#notify_end_game.game,
 	?FLOG("Stoping parent:~w",[Data#obs.parent]),
@@ -112,128 +107,3 @@ process(R = #notify_end_game{}, Data) ->
 
 process(_, Data) ->
     Data.
-
-maybe_report(R, #obs{ trace = true }) ->
-    catch report(R);
-
-maybe_report(_, _) ->
-    ok.
-
-report(R = #notify_join{}) ->
-    ?FLOG("~p: JOIN: ~p @ ~p~n", 
-              [R#notify_join.game,
-               R#notify_join.player,
-               R#notify_join.seat]);
-
-report(R = #notify_leave{}) ->
-    ?FLOG("~p: LEAVE: ~p~n", 
-              [R#notify_join.game,
-               R#notify_join.player]);
-
-report(R = #game_info{}) ->
-    ?FLOG("Game #~w, #players: ~w, joined: ~w, waiting: ~w; ",
-              [R#game_info.game, 
-               R#game_info.required, 
-               R#game_info.joined, 
-               R#game_info.waiting]),
-    Limit = R#game_info.limit,
-    ?FLOG("limit: low: ~w, high: ~w~n", 
-              [Limit#limit.low, 
-               Limit#limit.high]);
-
-report(R = #seat_state{ state = ?PS_FOLD }) ->
-    ?FLOG("~p: FOLD: ~p~n",
-              [R#seat_state.game, 
-               R#seat_state.player
-              ]);
-
-report(#seat_state{}) ->
-    ok;
-
-report(R = #notify_chat{}) ->
-    ?FLOG("~w: CHAT: ~w: ~p~n",
-              [R#notify_chat.game, 
-               R#notify_chat.player, 
-               R#notify_chat.message]);
-
-report(R = #notify_draw{ card = 0 }) ->
-    ?FLOG("~w: CARD: ~w~n",
-              [R#notify_draw.game, 
-               R#notify_draw.player]);
-
-report(R = #game_stage{}) ->
-    ?FLOG("~w: STAGE: ~w~n", 
-              [R#game_stage.game,
-               R#game_stage.stage]);
-
-report(R = #notify_raise{})
-  when R#notify_raise.raise == 0,
-R#notify_raise.call == 0 ->
-    ?FLOG("~w: CHECK: ~w~n",
-              [R#notify_raise.game, 
-               R#notify_raise.player]);
-
-report(R = #notify_raise{})
-  when R#notify_raise.call == 0 ->
-    ?FLOG("~w: CALL: ~w, ~-14.2. f~n",
-              [R#notify_raise.game, 
-               R#notify_raise.player,
-               R#notify_raise.raise / 1.0]);
-
-report(R = #notify_raise{}) ->
-    ?FLOG("~w: RAISE: ~w, ~-14.2. f~n",
-              [R#notify_raise.game, 
-               R#notify_raise.player, 
-               R#notify_raise.raise / 1.0]);
-
-report(R = #notify_sb{}) ->
-    ?FLOG("~w: SB: ~w~n",
-              [R#notify_sb.game, 
-               R#notify_sb.sb]);
-
-report(R = #notify_bb{}) ->
-    ?FLOG("~w: BB: ~w~n",
-              [R#notify_bb.game, 
-               R#notify_bb.bb]);
-
-report(R = #notify_shared{}) ->
-    ?FLOG("~w: BOARD: ~w~n",
-              [R#notify_shared.game, 
-               R#notify_shared.card]);
-
-report(R = #notify_win{}) ->
-    ?FLOG("~w: WIN: ~w, ~-14.2. f~n", 
-              [R#notify_win.game, 
-               R#notify_win.player, 
-               R#notify_win.amount / 1.0]);
-
-report(R = #notify_button{}) ->
-    ?FLOG("~w: DEALER: ~w~n", 
-              [R#notify_button.game, 
-               R#notify_button.button]);
-
-report(R = #notify_start_game{}) ->
-    ?FLOG("~w: START~n", [R#notify_start_game.game]);
-
-report(R = #notify_cancel_game{}) ->
-    ?FLOG("~w: CANCEL~n", [R#notify_cancel_game.game]);
-
-report(R = #notify_end_game{}) ->
-    ?FLOG("~w: END~n", [R#notify_end_game.game]);
-
-report(R = #notify_hand{}) ->
-    H = hand:to_string(R#notify_hand.hand),
-    ?FLOG("~w: HAND: ~w, with ~p~n", 
-              [R#notify_hand.game, 
-               R#notify_hand.player, 
-               H]);
-
-report(R = #show_cards{}) ->
-    Cards1 = [hand:card_to_string(Card) || Card <- R#show_cards.cards],
-    ?FLOG("~w: SHOW: ~w: ~p~n", 
-              [R#show_cards.game, 
-               R#show_cards.player, 
-               Cards1]);
-
-report(_) ->
-    ok.

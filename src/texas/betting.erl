@@ -50,6 +50,7 @@ start(Game, Ctx, [MaxRaises, Stage, HaveBlinds]) ->
 
 betting(Game, Ctx, #raise{ player = Player }) 
   when Ctx#texas.exp_player /= Player ->
+	?ERROR({Player, "raise failed"}),
     {continue, Game, Ctx};
 
 %%% Call & All-In
@@ -143,6 +144,7 @@ betting(Game, Ctx, #raise{ player = Player, raise = Amt }) ->
 betting(Game, Ctx, R = #fold{}) ->
   if
     Ctx#texas.exp_player /= R#fold.player ->
+	  ?ERROR({R#fold.player, "fold failed"}),
       {continue, Game, Ctx};
     true ->
       Game1 = g:cancel_timer(Game),
@@ -157,6 +159,7 @@ betting(Game, Ctx, R = #fold{}) ->
 betting(Game, Ctx, {timeout, _, _}) ->
   Game1 = g:cancel_timer(Game),
   Player = Ctx#texas.exp_player,
+  ?ERROR({Player, "bet timeout"}),
   %Seat = Ctx#texas.exp_seat,
   betting(Game1, Ctx, #fold{ player = Player });
 

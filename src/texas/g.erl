@@ -174,7 +174,7 @@ watch(Game, Ctx, R) ->
   },
 
   gen_server:cast(R#watch.player, Detail),
-	notify_player_state(R#watch.player, Game),
+  notify_player_state(R#watch.player, Game),
   
   if Ctx#texas.stage < ?GS_FLOP 
 		-> ok ;
@@ -197,7 +197,6 @@ watch(R, Game) ->
 
 
 leave(Game, R) ->
-  ?LOG([{g_leave, R}]),
   XRef = Game#game.xref,
   Seats = Game#game.seats,
   Player = R#leave.player,
@@ -209,7 +208,6 @@ leave(Game, R) ->
       Seat = element(SeatNum, Seats),
   	  ?LOG([{seat_to_leave, Seat}]),
       PID = Seat#seat.pid,
-          ?LOG([{can_leave}]),
           %% tell player
           R1 = #notify_leave{ 
             game = GID, 
@@ -217,9 +215,7 @@ leave(Game, R) ->
             proc = self()
           },
           %% notify players
-          ?LOG([{notify_player, R1}]),
           Game1 = broadcast(Game, R1),
-          ?LOG([{notify_player_end, R1}]),
           XRef1 = gb_trees:delete(Player, XRef),
           Game2 = Game1#game {
             xref = XRef1,
@@ -235,9 +231,7 @@ leave(Game, R) ->
           Inplay = Seat#seat.inplay,
           mdb:update_balance(PID, Inplay),
           ok = mdb:delete(tab_inplay, {GID, PID}),
-          ?LOG([{leave_auto_watch}]),
           Game3 = watch(#watch{player = Player}, Game2),
-          ?LOG([{leave_auto_watch_end}]),
           Game3;
     %% not playing here
     true ->

@@ -13,6 +13,7 @@ start(Game, Ctx=#texas{stage=PreviousStage}, []) ->
   Game2 = g:broadcast(Game1, #game_stage{ game = Game1#game.gid, stage = Ctx1#texas.stage}),
   g:show_cards(Game2, Ctx1#texas.b),
 
+  ?LOG([{"Show down", Game2}]),
   Ranks = g:rank_hands(Game2),
   notify_hands(Game2, Ranks),
 
@@ -66,7 +67,6 @@ notify_winner(Game, #winner{player = Player,amount = Amount, pid=PID, potid=PotI
 	  cost = Cost,
 	  potid=PotId
      },
-	?LOG([{notifyWinner,Event}]),
     g:broadcast(Game1, Event).
 
 check_inplay([], _Big, Game) ->

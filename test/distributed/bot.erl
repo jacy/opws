@@ -135,12 +135,10 @@ handle_cast(Event, Bot)
 handle_cast(stop, Bot) ->
     {stop, normal, Bot};
 
-handle_cast(Event, Bot) ->
-    ?LOG([{data, Bot},{message, Event}]),
+handle_cast(_Event, Bot) ->
     {noreply, Bot}.
 
-handle_call(Event, From, Bot) ->
-    ?LOG([{data, Bot},{message, Event}, {from, From}]),
+handle_call(_Event, _From, Bot) ->
     {noreply, Bot}.
 
 handle_info({tcp_closed, _}, Bot) ->
@@ -203,7 +201,6 @@ dispatch(#notify_game_detail{ game = GID }, Bot)
 
 dispatch(R = #notify_join{}, Bot) 
   when  R#notify_join.player == Bot#bot.pid ->
-	?LOG([{notify_join, R}]),
     dispatch_not_handled(R, Bot#bot{ no_join = true });
 
 dispatch(Event, Bot) ->
@@ -212,7 +209,6 @@ dispatch(Event, Bot) ->
 dispatch_not_handled(Event, Bot) ->
     Mod = Bot#bot.mod,
     State = Bot#bot.state,
-	?LOG([{mod, Mod},{state, State},{event, Event}]),
     case Mod:State(Event, Bot#bot.data) of
         {stop, _, Events} ->
             send(Bot, Events),
@@ -221,7 +217,6 @@ dispatch_not_handled(Event, Bot) ->
             send(Bot, Events),
             {noreply, Bot#bot{ state = State1, data = Data1 }};
         {continue, Data1, Events} ->
-			?LOG([{client_sending_event},{event, Events}]),
             send(Bot, Events),
             {noreply, Bot#bot{ data = Data1 }};
         {skip, Data1} ->

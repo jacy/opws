@@ -145,7 +145,7 @@ handle_info(Info, Server) ->
     {noreply, Server}.
 
 code_change(_OldVsn, Server, _Extra) ->
-  {ok, Server}. %% }}}
+  {ok, Server}.
 
 process_login(Client, Socket, Usr, Pass) ->
   case login:login(Usr, Pass, self()) of
@@ -230,7 +230,6 @@ parse_packet(Socket, {packet, Packet}, Client) ->
 parse_packet(Socket, {socket, Packet}, Client) ->
   gen_server:cast(Client#client.server, {'BUMP', size(Packet)}),
   Data = (catch pp:read(Packet)),
-  ?LOG([{receive_packet, {packet, Packet, Data}}]),
   Client1 = case Data of 
     {'EXIT', Error} ->
 	  ?ERROR([{parse_command_faild, {error, Error}}]),
@@ -252,8 +251,7 @@ parse_packet(Socket, {socket, Packet}, Client) ->
   end,
   Client1;
 
-parse_packet(_Socket, Event, Client) ->
-  ?LOG([{parse_packet, {event, Event}}]),
+parse_packet(_Socket, _Event, Client) ->
   Client.
 
 send_games(_,_, [], _) ->

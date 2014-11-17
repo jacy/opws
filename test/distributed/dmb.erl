@@ -157,7 +157,8 @@ wait_for_games(Data)
     T2 = erlang:now(),
     Elapsed = timer:now_diff(T2, T1) / 1000 / 1000,
 	stats:dump_stat(),
-    io:format("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]).
+    io:format("dmb: exited successfully, result:~p~n, ~w seconds elapsed~n", [Data, Elapsed]),
+	stats:stop().
 
 setup() ->
     schema:install(),

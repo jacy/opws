@@ -36,7 +36,6 @@ filter(R, Data) ->
     filter(R, Data, Data#dumbo.filters).
 
 filter(R, Data, [H|T]) ->
-	?LOG([{filter, H}]),
     case H(R, Data) of
         {skip, Data1} ->
             filter(R, Data1, T);
@@ -78,7 +77,7 @@ play(#notify_end_game{}, Data) ->
     {continue, Data#dumbo{ games_to_play = N }, []};
 
 play(R = #bet_req{}, Data = #dumbo{ actions = [H|T] }) ->
-	?LOG([{bet_req},{H}]),
+	?LOG([{game, Data#dumbo.game}, {bet_req},{H}]),
     react(R, H, Data#dumbo{ actions = T });
 
 play(_E, Data) ->

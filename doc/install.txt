@@ -171,4 +171,52 @@ dmb: exited successfully, result:{dmb,false,6000,
                                       1000,<0.636.0>,[],4,6000,30405,0}
 , 212.993361 seconds elapsed
 -------------------------------
-dmb:run(8000, 10, 10).
+(distributed_test@ujacy)3> dmb:run(7000,4,10).
+dmb: exited successfully, result:{dmb,false,7000,
+                                      {1415,960913,584056},
+                                      1000,<0.1528.0>,
+                                      [798176443,798405092,798755552,
+                                       797996827,797293015,799210267,
+                                       798042387,797707323,798783394,
+                                       797798724,798362611,797239304,
+                                       798957381,798432929,798516449,
+                                       797829315],
+                                      4,7000,35438,3}
+, 415.506865 seconds elapsed
+dmb: exited successfully, result:{dmb,false,7000,
+                                      {1415,960913,584056},
+                                      1000,<0.1528.0>,
+                                      [798176443,798405092,798755552],
+                                      4,7000,35438,2}
+, 415.52133299999997 seconds elapsed
+dmb: exited successfully, result:{dmb,false,7000,
+                                      {1415,960913,584056},
+                                      1000,<0.1528.0>,
+                                      [798176443],
+                                      4,7000,35438,1}
+, 415.522053 seconds elapsed
+dmb: exited successfully, result:{dmb,false,7000,
+                                      {1415,960913,584056},
+                                      1000,<0.1528.0>,[],4,7000,35438,0}
+, 415.522111 seconds elapsed
+-------------------------------
+(distributed_test@ujacy)3> dmb:run(8000,4,10).
+[{elapsed,19.992883},
+ {{tcp_connections,11329},48729},
+ {{total_bots_connected,11329},40729},
+ {{total_bots_disconnected,11329},48684},
+ {{total_games_ended,11329},7955},
+ {{total_games_started,11329},8000},
+ {{{mb_tcp_count,<10223.117.0>},11329},12092},
+ {{{mb_tcp_count,<10227.126.0>},11329},12413},
+ {{{mb_tcp_count,<10225.136.0>},11329},12185},
+ {{{mb_tcp_count,<10229.148.0>},11329},12039},
+ {memory,[{total,699467568},
+          {processes,47845318},
+          {processes_used,47845318},
+          {system,651622250},
+          {atom,298473},
+          {atom_used,293191},
+          {binary,459632},
+          {code,6689870},
+          {ets,96804792}]}]

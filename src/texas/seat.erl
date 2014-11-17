@@ -151,7 +151,6 @@ join(Game, R) ->
             nick = R#join.nick,
             proc = self()
           },
-		  ?LOG([{broadcast_player_join,PID}]),
           broadcast(Game1, R1);
         Error ->
           %% no money or other error

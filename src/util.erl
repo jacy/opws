@@ -73,5 +73,4 @@ start_syslog() ->
 	ok = application:start(sasl),
         ok = application:set_env(syslog, msg_queue_limit, 500),
         ok = application:set_env(syslog, async_limit, 65536 + 1),
-    ok = application:start(syslog),
-    ok.
+    application:start(syslog).

@@ -65,7 +65,6 @@ handle_cast({'NOTE', Note}, Exch) ->
     {noreply, Exch#exch{ note = Note }};
 
 handle_cast(stop, Exch) ->
-  ?LOG([{exch_terminate, handle_stop}]),
   {stop, normal, Exch};
 
 handle_cast(Event, Exch) ->
@@ -91,20 +90,12 @@ process_cast(Event, Exch) ->
   Ctx = Exch#exch.ctx,
 
   Result = Mod:State(Data, Ctx, Event),
-  case Event of
-	{timeout,_,_} -> ok;
-	_ -> ?FLOG("Executed Mod=~w, State=~w, Event=~w, Result=~w ~n",[Mod,State,Event,Result])
-	end,
-   advance(Exch, Event, Result).
+  advance(Exch, Event, Result).
 
 fsm_init(Exch = #exch{ stack = [{Mod, Params}|_] }, Event) ->
     Ctx = Exch#exch.ctx,
     Exch1 = Exch#exch{state = none },
     Result = Mod:start(Exch1#exch.data, Ctx, Params),
-	case Event of
-		{timeout,_,_} -> ok;
-		_ -> ?FLOG("	Fsm init Mod=~w, Result=~w ~n",[Mod,Result])
-	end,
     advance(Exch1, Event, Result).
 
 advance(Exch = #exch{}, _, {next, NextState, Data, Ctx}) ->
