@@ -68,7 +68,6 @@ broadcast(Game, Event) ->
     broadcast(Game, Event, none).
 
 broadcast(Game, Event, Except) ->
-    %% notify players
     Seats = seat:get_seats(Game, ?PS_GAMING bor ?PS_OUT),
     Players = make_players(Game, Seats),
     broadcast(Game, Players, Event, Except), 
@@ -183,7 +182,7 @@ watch(Game, Ctx, R) ->
 		  notify_pot(Game#game.pot, R#watch.player)
   end,
   
-  if Ctx#texas.stage band ?GS_BETTING > 0 -> % Show Bet Reqeust Timer
+  if Ctx#texas.stage band ?GS_BETTING > 0 -> % Show Bet Request Timer
 		 gen_server:cast(R#watch.player,#notify_actor{ game = Game#game.gid, seat = Ctx#texas.exp_seat});
 	 true -> 
 		  ok
