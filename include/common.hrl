@@ -1,7 +1,7 @@
--define(FLOG(Msg), syslog:info_msg(Msg)).
--define(FLOG(Format, Data), syslog:info_msg(Format,Data)).
--define(LOG(L), syslog:info_msg("~p~n", [L])).
--define(ERROR(L), syslog:error_msg("ERR:~p~n", [L])).
+-define(FLOG(Msg), error_logger:info_msg(Msg)).
+-define(FLOG(Format, Data), error_logger:info_msg(Format,Data)).
+-define(LOG(L), error_logger:info_report(L)).
+-define(ERROR(L), error_logger:error_report(L)).
 
 -define(MAX_RAISES, 3).
 -define(MAX_PLAYERS, 500000).

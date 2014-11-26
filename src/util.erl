@@ -70,7 +70,9 @@ wait_for_group(Name) ->
     end.
 
 start_syslog() ->
+	MaxQueue=500,
 	ok = application:start(sasl),
-        ok = application:set_env(syslog, msg_queue_limit, 500),
-        ok = application:set_env(syslog, async_limit, 65536 + 1),
+        ok = application:set_env(syslog, no_progress, true),
+        ok = application:set_env(syslog, msg_queue_limit, MaxQueue), % affects error_logger only
+        ok = application:set_env(syslog, async_limit, MaxQueue + 1),
     application:start(syslog).
