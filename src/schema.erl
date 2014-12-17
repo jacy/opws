@@ -129,5 +129,6 @@ reset_counters()->
     counter:reset(game),
     counter:reset(player),
     counter:reset(inplay_xref),
+    counter:reset(round),
     ok.
 
